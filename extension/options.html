@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Message Generator Settings</title>
+    <style>
+      body { font-family: Segoe UI, Arial, sans-serif; margin: 16px; background: #f7f7f8; }
+      .container { max-width: 860px; margin: 0 auto; background: #fff; padding: 20px 24px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+      label { display: block; margin-top: 10px; font-weight: 600; }
+      input, textarea, select { width: 100%; padding: 8px; margin-top: 6px; }
+      input, textarea, select { border: 1px solid #d0d7de; border-radius: 8px; }
+      input:focus, textarea:focus, select:focus { outline: 2px solid #0a66c233; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .actions { margin-top: 16px; display: flex; gap: 8px; align-items: center; }
+      .muted { color: #666; font-weight: 400; }
+      h2 { margin: 0 0 4px 0; }
+      .sub { color: #666; margin: 0 0 16px 0; }
+      button { border-radius: 8px; border: 1px solid #c7c7c7; padding: 8px 12px; cursor: pointer; }
+      #save { background: #0a66c2; color: #fff; border: none; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Your Profile</h2>
+      <p class="sub">We’ll use this to personalize your outreach. You can also prefill from your LinkedIn profile and edit.</p>
+      <div class="row">
+      <div>
+        <label>Name <input id="myName" placeholder="e.g., Jane Doe" /></label>
+      </div>
+      <div>
+        <label>Title <input id="myTitle" placeholder="e.g., Product Manager" /></label>
+      </div>
+      </div>
+      <label>Company <input id="myCompany" placeholder="e.g., Acme Inc." /></label>
+      <label>About you <textarea id="aboutMe" rows="3" placeholder="A short summary about you..."></textarea></label>
+      <label>Interests <textarea id="interests" rows="3" placeholder="Topics you care about..."></textarea></label>
+      <label>Goals <textarea id="goals" rows="3" placeholder="What you want to achieve..."></textarea></label>
+      <label>Strengths <textarea id="strengths" rows="3" placeholder="Key skills and strengths..."></textarea></label>
+      <div class="row">
+      <div>
+        <label>Tone
+          <select id="tone">
+            <option>professional</option>
+            <option>friendly</option>
+            <option>concise</option>
+            <option>warm</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>Call to action <input id="callToAction" placeholder="e.g., Would you be open to a quick chat next week?" /></label>
+      </div>
+      </div>
+
+      <div class="actions">
+        <button id="save">Save</button>
+        <button id="prefill">Prefill from current LinkedIn tab</button>
+        <span id="status" class="muted"></span>
+      </div>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
