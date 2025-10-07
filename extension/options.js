@@ -25,12 +25,103 @@ function setUserProfile(profile) {
   });
 }
 
+// API Key functions
+function getApiKey() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ geminiApiKey: '' }, (items) => {
+      resolve(items.geminiApiKey || '');
+    });
+  });
+}
+
+function setApiKey(apiKey) {
+  return new Promise(resolve => {
+    chrome.storage.sync.set({ geminiApiKey: apiKey }, () => resolve(true));
+  });
+}
+
+async function loadApiKey() {
+  const apiKey = await getApiKey();
+  const apiKeyInput = byId('geminiApiKey');
+  if (apiKeyInput) {
+    apiKeyInput.value = apiKey;
+  }
+}
+
+async function saveApiKey() {
+  const apiKeyInput = byId('geminiApiKey');
+  const status = byId('apiStatus');
+  
+  if (!apiKeyInput) return;
+  
+  const apiKey = apiKeyInput.value.trim();
+  
+  try {
+    await setApiKey(apiKey);
+    if (status) {
+      status.textContent = apiKey ? 'API key saved successfully!' : 'API key cleared!';
+      status.style.color = '#0a66c2';
+    }
+  } catch (error) {
+    console.error('Error saving API key:', error);
+    if (status) {
+      status.textContent = 'Failed to save API key';
+      status.style.color = '#d73a49';
+    }
+  }
+}
+
+async function testApiKey() {
+  const apiKey = await getApiKey();
+  const status = byId('apiStatus');
+  const testBtn = byId('testApiKey');
+  
+  if (!apiKey) {
+    if (status) {
+      status.textContent = 'Please enter an API key first';
+      status.style.color = '#d73a49';
+    }
+    return;
+  }
+  
+  if (testBtn) testBtn.disabled = true;
+  if (status) {
+    status.textContent = 'Testing connection...';
+    status.style.color = '#666';
+  }
+  
+  try {
+    // Simple test call to Gemini API
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey);
+    
+    if (response.ok) {
+      if (status) {
+        status.textContent = 'API key is valid!';
+        status.style.color = '#28a745';
+      }
+    } else {
+      throw new Error('Invalid API key or API error');
+    }
+  } catch (error) {
+    console.error('API test error:', error);
+    if (status) {
+      status.textContent = 'API key test failed - please check your key';
+      status.style.color = '#d73a49';
+    }
+  } finally {
+    if (testBtn) testBtn.disabled = false;
+  }
+}
+
 async function loadForm() {
   const p = await getUserProfile();
   Object.keys(DEFAULT_USER_PROFILE).forEach(k => {
     const el = byId(k);
     if (el) el.value = p[k] || '';
   });
+  
+  // Also load the API key
+  await loadApiKey();
 }
 
 async function saveForm() {
@@ -127,9 +218,35 @@ async function prefillFromCurrentTab() {
   }
 }
 
+// Tab switching functionality
+function initializeTabs() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const targetTab = button.dataset.tab;
+
+      // Update active button
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+
+      // Update active tab pane
+      tabPanes.forEach(pane => pane.classList.remove('active'));
+      const targetPane = document.getElementById(`${targetTab}-tab`);
+      if (targetPane) {
+        targetPane.classList.add('active');
+      }
+    });
+  });
+}
+
 // Event listeners
+initializeTabs();
 byId('save').addEventListener('click', saveForm);
 byId('prefill').addEventListener('click', prefillFromCurrentTab);
+byId('saveApiKey').addEventListener('click', saveApiKey);
+byId('testApiKey').addEventListener('click', testApiKey);
 
 // Initialize the page
 loadForm();

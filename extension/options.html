@@ -5,7 +5,20 @@
     <title>Message Generator Settings</title>
     <style>
       body { font-family: Segoe UI, Arial, sans-serif; margin: 16px; background: #f7f7f8; }
-      .container { max-width: 860px; margin: 0 auto; background: #fff; padding: 20px 24px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+      .container { max-width: 860px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+      
+      /* Tab Navigation */
+      .tab-nav { display: flex; border-bottom: 1px solid #d0d7de; margin: 0; }
+      .tab-button { background: none; border: none; padding: 12px 20px; cursor: pointer; font-size: 14px; color: #666; border-bottom: 2px solid transparent; }
+      .tab-button.active { color: #0a66c2; border-bottom-color: #0a66c2; font-weight: 600; }
+      .tab-button:hover { background: #f7f7f8; }
+      
+      /* Tab Content */
+      .tab-content { padding: 20px 24px; }
+      .tab-pane { display: none; }
+      .tab-pane.active { display: block; }
+      
+      /* Form Styles */
       label { display: block; margin-top: 10px; font-weight: 600; }
       input, textarea, select { width: 100%; padding: 8px; margin-top: 6px; }
       input, textarea, select { border: 1px solid #d0d7de; border-radius: 8px; }
@@ -21,25 +34,57 @@
   </head>
   <body>
     <div class="container">
-      <h2>Your Profile</h2>
-      <p class="sub">We'll use this to personalize your outreach. You can also prefill from your LinkedIn profile and edit.</p>
-      <div class="row">
-      <div>
-        <label>Name <input id="myName" placeholder="e.g., Jane Doe" /></label>
+      <!-- Tab Navigation -->
+      <div class="tab-nav">
+        <button class="tab-button active" data-tab="profile">Profile</button>
+        <button class="tab-button" data-tab="settings">API Settings</button>
       </div>
-      <div>
-        <label>Title <input id="myTitle" placeholder="e.g., Product Manager" /></label>
-      </div>
-      </div>
-      <label>About you <textarea id="aboutMe" rows="3" placeholder="A short summary about you..."></textarea></label>
-      <label>Interests <textarea id="interests" rows="3" placeholder="Topics you care about..."></textarea></label>
-      <label>Strengths <textarea id="strengths" rows="3" placeholder="Key skills and strengths..."></textarea></label>
-      <label>Other <textarea id="other" rows="3" placeholder="Any other relevant information..."></textarea></label>
 
-      <div class="actions">
-        <button id="save">Save</button>
-        <button id="prefill">Prefill from current LinkedIn tab</button>
-        <span id="status" class="muted"></span>
+      <!-- Tab Content -->
+      <div class="tab-content">
+        <!-- Profile Tab -->
+        <div id="profile-tab" class="tab-pane active">
+          <h2>Your Profile</h2>
+          <p class="sub">We'll use this to personalize your outreach. You can also prefill from your LinkedIn profile and edit.</p>
+          <div class="row">
+          <div>
+            <label>Name <input id="myName" placeholder="e.g., Jane Doe" /></label>
+          </div>
+          <div>
+            <label>Title <input id="myTitle" placeholder="e.g., Product Manager" /></label>
+          </div>
+          </div>
+          <label>About you <textarea id="aboutMe" rows="3" placeholder="A short summary about you..."></textarea></label>
+          <label>Interests <textarea id="interests" rows="3" placeholder="Topics you care about..."></textarea></label>
+          <label>Strengths <textarea id="strengths" rows="3" placeholder="Key skills and strengths..."></textarea></label>
+          <label>Other <textarea id="other" rows="3" placeholder="Any other relevant information..."></textarea></label>
+
+          <div class="actions">
+            <button id="save">Save</button>
+            <button id="prefill">Prefill from current LinkedIn tab</button>
+            <span id="status" class="muted"></span>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-pane">
+          <h2>API Configuration</h2>
+          <p class="sub">Configure your AI service settings for message generation.</p>
+          
+          <label>Gemini API Key 
+            <input id="geminiApiKey" type="password" placeholder="Enter your Gemini API key..." />
+          </label>
+          <p class="muted" style="margin-top: 4px; font-size: 13px;">
+            Your API key is stored securely in your browser and never shared.
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #0a66c2;">Get your API key here</a>
+          </p>
+
+          <div class="actions">
+            <button id="saveApiKey">Save API Key</button>
+            <button id="testApiKey" style="background: #f0f0f0; color: #333;">Test Connection</button>
+            <span id="apiStatus" class="muted"></span>
+          </div>
+        </div>
       </div>
     </div>
 
