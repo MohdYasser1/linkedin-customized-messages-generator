@@ -476,8 +476,33 @@
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg?.type === 'PARSE_PROFILE_REQUEST') {
       (async () => {
-        const result = await parseUserProfile();
-        sendResponse(result);
+        console.log('Extracting profile HTML for AI parsing...');
+        
+        // small wait to let dynamic elements load
+        await sleep(400);
+
+        // Extract the main HTML element from the user's LinkedIn profile
+        const mainElement = document.querySelector('main');
+        if (!mainElement) {
+          console.error('Could not find main profile content');
+          sendResponse({ ok: false, error: 'no-main-element' });
+          return;
+        }
+
+        const htmlContent = mainElement.outerHTML;
+        
+        // Send HTML to background script for AI processing
+        chrome.runtime.sendMessage({ 
+          type: 'PARSE_PROFILE_REQUEST',
+          payload: { htmlContent }
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('Background script communication failed', chrome.runtime.lastError);
+            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse(response);
+          }
+        });
       })();
       return true; // async response
     }

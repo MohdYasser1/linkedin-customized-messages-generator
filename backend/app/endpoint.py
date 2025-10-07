@@ -1,12 +1,12 @@
 import json
 from http import HTTPStatus
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 from starlette.responses import Response
 
-from crewai import LLM, Agent, Task
+from crewai import LLM, Agent, Task, Crew
 
 # Define the structure for a single experience
 class Experience(BaseModel):
@@ -75,7 +75,6 @@ linkedin_profile_processor = Agent(
     ready for immediate use.""",
     verbose=True,
     allow_delegation=False,
-    llm = llm
 )
 
 process_user_profile_task = Task(
@@ -91,12 +90,49 @@ router = APIRouter()
 
 # Create a POST endpoint to parse and update the USER's data
 @router.post("/parse_profile", response_model=LinkedInProfile)
-async def parse_linkedin_profile(request: dict):
+async def parse_linkedin_profile(request: dict, authorization: Optional[str] = Header(None)):
     print("Request received for profile parsing:", request)
     
+    # Extract API key from Authorization header
+    api_key = None
+    if authorization and authorization.startswith("Bearer "):
+        api_key = authorization[7:]  # Remove "Bearer " prefix
+    
+    if not api_key:
+        raise HTTPException(status_code=401, detail="No API key provided in Authorization header")
+    
     # Extract HTML content from the request
-    html_content = request.get("message", "")  # HTML content from LinkedIn profile
+    html_content = request.get("html_content", "")
     timestamp = request.get("timestamp", "")
+    
+    if not html_content:
+        raise HTTPException(status_code=400, detail="No HTML content provided")
+    
+    try:
+        # Update the LLM with the provided API key
+        profile_llm = LLM(
+            model="gemini/gemini-flash-latest",
+            temperature=0.7,
+            api_key=api_key
+        )
+        
+        # Create agent with the API key
+        linkedin_profile_processor.llm = profile_llm
+        process_user_profile_task.agent = linkedin_profile_processor
+        # Execute the task
+        parse_crew = Crew(
+            agegnts=[linkedin_profile_processor],
+            tasks=[process_user_profile_task],
+            verbose=False    
+        )
+
+        result = parse_crew.kickoff(inputs={"user_html": html_content})
+        print("Profile parsing completed successfully")
+        return json.loads(result.raw)
+        
+    except Exception as e:
+        print(f"Error parsing profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to parse profile: {str(e)}")
 
 
 @router.post("/generate")

@@ -166,7 +166,7 @@ async function prefillFromCurrentTab() {
       chrome.tabs.onUpdated.addListener(onUpdated);
     });
 
-    if (status) status.textContent = 'Parsing your profile...';
+    if (status) status.textContent = 'Parsing your profile with AI...';
     
     // Try to parse the profile
     const response = await chrome.tabs.sendMessage(tab.id, { type: 'PARSE_PROFILE_REQUEST' });
@@ -189,26 +189,41 @@ async function prefillFromCurrentTab() {
       await setUserProfile(updated);
       await loadForm();
       
-      if (status) status.textContent = 'Prefill successful!';
-      tab && tab.id && chrome.tabs.remove(tab.id);
+      if (status) {
+        status.textContent = 'AI profile parsing successful!';
+        status.style.color = '#28a745';
+      }
       
-      // Show success message on LinkedIn tab
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          const toast = document.createElement('div');
-          toast.textContent = 'Profile data extracted successfully!';
-          Object.assign(toast.style, {
-            position: 'fixed', top: '20px', right: '20px', zIndex: '10000',
-            background: '#0a66c2', color: 'white', padding: '12px 16px',
-            borderRadius: '8px', fontFamily: 'sans-serif', fontSize: '14px'
-          });
-          document.body.appendChild(toast);
-          setTimeout(() => toast.remove(), 3000);
-        }
-      });
+      // Close the LinkedIn tab
+      if (tab && tab.id) {
+        chrome.tabs.remove(tab.id);
+      }
+      
     } else {
-      if (status) status.textContent = 'Could not parse profile data';
+      // Handle different error types
+      const errorMessage = response?.message || 'Could not parse profile data';
+      const errorType = response?.error || 'unknown';
+      
+      let userMessage = 'Prefill failed';
+      if (errorType === 'no-api-key') {
+        userMessage = 'Please configure your API key in Settings tab first';
+      } else if (errorType === 'network-error') {
+        userMessage = 'Could not connect to AI service - check if backend is running';
+      } else if (errorType === 'backend-error') {
+        userMessage = 'AI processing failed - check your API key in Settings';
+      } else if (errorType === 'no-main-element') {
+        userMessage = 'Could not find profile content on the page';
+      }
+      
+      if (status) {
+        status.textContent = userMessage;
+        status.style.color = '#d73a49';
+      }
+      
+      // Close the LinkedIn tab
+      if (tab && tab.id) {
+        chrome.tabs.remove(tab.id);
+      }
     }
   } catch (error) {
     console.error('Prefill error:', error);

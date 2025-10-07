@@ -1,4 +1,8 @@
 // background.js
+
+// Configuration
+const SERVER_URL = 'http://localhost:8000';
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log('LinkedIn Parser installed');
   try {
@@ -47,8 +51,8 @@ async function sendToBackend(profile) {
   const apiKey = await getApiKey();
   // if (!apiKey) throw new Error('No API key configured');
 
-  // Replace with your backend endpoint
-  const endpoint = 'http://127.0.0.1:8000/generate'; 
+  // Use the configured server URL
+  const endpoint = `${SERVER_URL}/generate`; 
 
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -69,9 +73,84 @@ async function sendToBackend(profile) {
   return result;
 }
 
+// Function to call the parse_profile endpoint specifically for prefill
+async function parseProfileWithAI(htmlContent) {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ geminiApiKey: '' }, async (items) => {
+      const apiKey = items.geminiApiKey || '';
+      
+      if (!apiKey) {
+        resolve({ ok: false, error: 'no-api-key', message: 'Please configure your Gemini API key in the extension settings' });
+        return;
+      }
+
+      try {
+        const response = await fetch(`${SERVER_URL}/parse_profile`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            html_content: htmlContent,
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.error) {
+          resolve({ ok: false, error: 'backend-error', message: data.error });
+          return;
+        }
+
+        // Transform the data to match expected format
+        const profileData = {
+          name: data.name || '',
+          headline: data.headline || '',
+          about: data.about || '',
+          interests: data.interests || '',
+          strengths: Array.isArray(data.strengths) ? data.strengths.join(', ') : (data.strengths || ''),
+          other: data.others || ''
+        };
+
+        resolve({ ok: true, result: profileData });
+
+      } catch (error) {
+        console.error('Error calling parse_profile endpoint:', error);
+        resolve({ 
+          ok: false, 
+          error: 'network-error', 
+          message: `Failed to connect to AI service: ${error.message}` 
+        });
+      }
+    });
+  });
+}
+
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'PARSE_PROFILE_REQUEST') {
+    console.log("Received PARSE_PROFILE_REQUEST for options prefill");
+    const payload = message.payload;
+    
+    // Call the AI parsing endpoint specifically for profile prefill
+    parseProfileWithAI(payload.htmlContent).then((resp) => {
+      console.log("Profile parsing completed:", resp);
+      sendResponse(resp);
+    }).catch((err) => {
+      console.error("Profile parsing failed:", err);
+      sendResponse({ ok: false, error: 'parsing-failed', message: err.message });
+    });
+    
+    return true; // async response
+  }
+
   if (message?.type === 'GENERATE_MESSAGE') {
     console.log("Received GENERATE_MESSAGE:", message);
     const payload = message.payload;
