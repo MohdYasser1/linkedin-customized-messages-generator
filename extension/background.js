@@ -19,12 +19,36 @@ function getApiKey() {
   });
 }
 
+// Helper to check if user profile has been parsed before
+function getUserProfileParsedStatus() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ userProfileParsed: false, userProfileData: null }, (items) => {
+      resolve({
+        isParsed: items.userProfileParsed || false,
+        profileData: items.userProfileData || null
+      });
+    });
+  });
+}
+
+// Helper to set user profile parsed status
+function setUserProfileParsedStatus(isParsed, profileData = null) {
+  return new Promise(resolve => {
+    chrome.storage.sync.set({ 
+      userProfileParsed: isParsed,
+      userProfileData: profileData 
+    }, () => {
+      resolve(true);
+    });
+  });
+}
+
 async function sendToBackend(profile) {
   const apiKey = await getApiKey();
-  if (!apiKey) throw new Error('No API key configured');
+  // if (!apiKey) throw new Error('No API key configured');
 
   // Replace with your backend endpoint
-  const endpoint = 'https://your-backend.example.com/parse';
+  const endpoint = 'http://127.0.0.1:8000/generate'; 
 
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -40,23 +64,85 @@ async function sendToBackend(profile) {
     throw new Error(`Backend error: ${res.status} ${txt}`);
   }
   console.log("Response received from backend");
-  console.log("Response data:", await res.json());
-  return await res.json();
+  const result = await res.json();
+  console.log("Response data:", result);
+  return result;
 }
 
+
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'PARSED_PROFILE') {
-    const profile = message.payload;
+  if (message?.type === 'GENERATE_MESSAGE') {
+    console.log("Received GENERATE_MESSAGE:", message);
+    const payload = message.payload;
+    
+    // Transform the payload to match what the backend expects
+    const backendPayload = {
+      message: payload.htmlContent || '',  // Send HTML content as the message
+      url: payload.url,
+      timestamp: payload.timestamp,
+      type: payload.type
+    };
+    
+    console.log("Sending to backend:", backendPayload);
+    
     // call backend, respond asynchronously
-    sendToBackend(profile).then(resp => {
+    sendToBackend(backendPayload).then(async (resp) => {
+      console.log("Message generated successfully:", resp);
+      
+      // Store the generated message for popup
+      const generatedMessage = resp.generated_message || resp.message || 'Generated message placeholder';
+      await chrome.storage.local.set({
+        generatedMessage: generatedMessage,
+        messageTarget: payload,
+        messageError: null  // Clear any previous errors
+      });
+      
+      // Try to automatically open popup
+      chrome.action.openPopup().catch((error) => {
+        console.log("Could not auto-open popup:", error);
+        // Fallback: Show notification on the page
+        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+          if (tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              type: 'SHOW_SUCCESS_NOTIFICATION',
+              message: 'Message generated! Click the extension icon to view it.'
+            });
+          }
+        });
+      });
+      
       sendResponse({ ok: true, result: resp });
-    }).catch(err => {
-      console.error(err);
+    }).catch(async (err) => {
+      console.error("Failed to generate message:", err);
+      
+      // Store error for popup
+      await chrome.storage.local.set({
+        generatedMessage: null,
+        messageError: err.message,
+        messageTarget: payload
+      });
+      
+      // Try to automatically open popup for error
+      chrome.action.openPopup().catch((error) => {
+        console.log("Could not auto-open error popup:", error);
+        // Fallback: Show error notification on the page
+        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+          if (tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              type: 'SHOW_ERROR_NOTIFICATION',
+              message: 'Message generation failed. Click the extension icon for details.'
+            });
+          }
+        });
+      });
+      
       sendResponse({ ok: false, error: err.message });
     });
     // tell Chrome we'll call sendResponse asynchronously
     return true;
   }
+  
   if (message?.type === 'OPEN_OPTIONS') {
     chrome.runtime.openOptionsPage();
     sendResponse?.({ ok: true });
@@ -64,10 +150,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Open options when clicking toolbar icon
-chrome.action?.onClicked.addListener(() => {
-  chrome.runtime.openOptionsPage();
-});
+// Note: Removed action click handler since we now use default_popup
 
 // Context menu click handler
 chrome.contextMenus?.onClicked.addListener((info) => {

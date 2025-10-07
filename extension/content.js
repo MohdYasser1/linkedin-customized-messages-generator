@@ -312,63 +312,71 @@
 
   // --- main generate handler ---
   async function onGenerateClick(ev) {
-    ev.currentTarget.disabled = true;
-    ev.currentTarget.textContent = 'Parsing...';
-
-    const selectors = await loadSelectors();
-    if (!selectors) {
-      alert('Could not load selectors.json');
-      ev.currentTarget.disabled = false;
-      ev.currentTarget.textContent = 'Generate Message';
+    // Check if button still exists
+    if (!ev.currentTarget) {
+      console.warn('Button element no longer exists');
       return;
     }
+
+    ev.currentTarget.disabled = true;
+    ev.currentTarget.textContent = 'Generating...';
 
     // small wait to let dynamic elements load
     await sleep(400);
 
-    const name = extractField(selectors, 'name');
-    console.log('Parsed name:', name);
-    
-    const headline = extractField(selectors, 'headline');
-    console.log('Parsed headline:', headline);
-        
-    const about = extractField(selectors, 'about');
-    console.log('Parsed about:', about);
-    
-  const experience = parseExperience(selectors.experienceList || {});
-    console.log('Parsed experience:', experience);
-    
-  const education = parseEducation(selectors.educationList || {});
-    console.log('Parsed education:', education);
-    
-    const url = window.location.href;
-    console.log('Current URL:', url);
-    
-    const timestamp = new Date().toISOString();
-    console.log('Timestamp:', timestamp);
+    // Extract the main HTML element from the LinkedIn profile
+    const mainElement = document.querySelector('main');
+    if (!mainElement) {
+      alert('Could not find main profile content');
+      if (ev.currentTarget) {
+        ev.currentTarget.disabled = false;
+        ev.currentTarget.textContent = 'Generate Message';
+      }
+      return;
+    }
 
-    const schema = {
-      name,
-      headline,
-      about,
-      experience,
-      education,
+    const htmlContent = mainElement.outerHTML;
+    const url = window.location.href;
+    const timestamp = new Date().toISOString();
+
+    const payload = {
+      htmlContent,
       url,
-      timestamp
+      timestamp,
+      type: 'TARGET_PROFILE' // Indicate this is a target profile for message generation
     };
 
-    // send to background worker for further processing (e.g., call backend)
-    chrome.runtime.sendMessage({ type: 'PARSED_PROFILE', payload: schema }, (resp) => {
+    console.log('Sending target profile HTML to server for message generation');
+
+    // Set a fallback timeout to reset button in case callback doesn't work
+    const resetButtonTimeout = setTimeout(() => {
+      if (ev.currentTarget) {
+        ev.currentTarget.disabled = false;
+        ev.currentTarget.textContent = 'Generate Message';
+        console.log('Button reset by timeout fallback');
+      }
+    }, 10000); // 10 second fallback
+
+    // send to background worker for AI processing
+    chrome.runtime.sendMessage({ type: 'GENERATE_MESSAGE', payload }, (resp) => {
+      // Clear the fallback timeout since we got a response
+      clearTimeout(resetButtonTimeout);
+      
       if (chrome.runtime.lastError) {
         console.error('Message failed', chrome.runtime.lastError);
         alert('Failed to send data to extension backend.');
-      } else {
-        // optional: show a temporary confirmation
-        ev.currentTarget.textContent = 'Sent!';
-        setTimeout(() => {
+        // Check if button still exists before trying to modify it
+        if (ev.currentTarget) {
           ev.currentTarget.disabled = false;
           ev.currentTarget.textContent = 'Generate Message';
-        }, 1200);
+        }
+      } else {
+        console.log('Message generation response:', resp);
+        // Reset button immediately since popup will open automatically
+        if (ev.currentTarget) {
+          ev.currentTarget.disabled = false;
+          ev.currentTarget.textContent = 'Generate Message';
+        }
       }
     });
   }
@@ -387,25 +395,99 @@
   // start
   observeForProfile();
 
+  // Function to parse user's own profile and send to AI server
+  async function parseUserProfile() {
+    console.log('Parsing user profile for AI processing...');
+    
+    // small wait to let dynamic elements load
+    await sleep(400);
+
+    // Extract the main HTML element from the user's LinkedIn profile
+    const mainElement = document.querySelector('main');
+    if (!mainElement) {
+      console.error('Could not find main profile content');
+      return { ok: false, error: 'no-main-element' };
+    }
+
+    const htmlContent = mainElement.outerHTML;
+    const url = window.location.href;
+    const timestamp = new Date().toISOString();
+
+    const payload = {
+      htmlContent,
+      url,
+      timestamp,
+      type: 'USER_PROFILE' // Indicate this is the user's own profile
+    };
+
+    console.log('Sending user profile HTML to server for AI parsing');
+
+    // Send to background worker for AI processing
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: 'GENERATE_MESSAGE', payload }, (resp) => {
+        if (chrome.runtime.lastError) {
+          console.error('Message failed', chrome.runtime.lastError);
+          resolve({ ok: false, error: chrome.runtime.lastError.message });
+        } else {
+          resolve(resp);
+        }
+      });
+    });
+  }
+
+  // Show notification on page
+  function showPageNotification(message, isError = false) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      background: ${isError ? '#dc3545' : '#0a66c2'};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      max-width: 300px;
+      cursor: pointer;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 5000);
+    
+    // Click to dismiss
+    notification.addEventListener('click', () => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    });
+  }
+
   // Allow Options page to request parsing for prefill
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg?.type === 'PARSE_PROFILE_REQUEST') {
       (async () => {
-        const selectors = await loadSelectors();
-        if (!selectors) return sendResponse({ ok: false, error: 'no-selectors' });
-        // small wait for dynamic pieces
-        await sleep(200);
-        const name = extractField(selectors, 'name');
-        const headline = extractField(selectors, 'headline');
-        const about = extractField(selectors, 'about');
-        const experience = parseExperience(selectors.experienceList || {});
-        const education = parseEducation(selectors.educationList || {});
-        const url = window.location.href;
-        const timestamp = new Date().toISOString();
-        const schema = { name, headline, about, experience, education, url, timestamp };
-        sendResponse({ ok: true, schema });
+        const result = await parseUserProfile();
+        sendResponse(result);
       })();
       return true; // async response
+    }
+    
+    if (msg?.type === 'SHOW_SUCCESS_NOTIFICATION') {
+      showPageNotification(msg.message, false);
+    }
+    
+    if (msg?.type === 'SHOW_ERROR_NOTIFICATION') {
+      showPageNotification(msg.message, true);
     }
   });
 

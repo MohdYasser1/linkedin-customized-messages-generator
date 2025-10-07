@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Generated Message</title>
+    <style>
+      body { 
+        font-family: Segoe UI, Arial, sans-serif; 
+        margin: 0; 
+        padding: 16px; 
+        background: #f7f7f8; 
+        min-width: 400px;
+        max-width: 600px;
+      }
+      .container { 
+        background: #fff; 
+        padding: 20px; 
+        border-radius: 12px; 
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06); 
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e6e6e6;
+      }
+      .header h2 { 
+        margin: 0; 
+        color: #0a66c2; 
+      }
+      .header-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .close-btn, .options-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #666;
+        padding: 4px;
+        border-radius: 4px;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .close-btn:hover, .options-btn:hover {
+        background: #f3f2ef;
+      }
+      .message-content {
+        margin-bottom: 16px;
+        padding: 16px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        border-left: 4px solid #0a66c2;
+        line-height: 1.6;
+      }
+      .placeholder {
+        color: #666;
+        font-style: italic;
+        text-align: center;
+        padding: 40px 20px;
+      }
+      .loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        color: #666;
+      }
+      .spinner {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #0a66c2;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+        margin-right: 12px;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: 1px solid #d0d7de;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .copy-btn {
+        background: #0a66c2;
+        color: white;
+        border: none;
+      }
+      .copy-btn:hover {
+        background: #004182;
+      }
+      .regenerate-btn {
+        background: white;
+        color: #0a66c2;
+      }
+      .regenerate-btn:hover {
+        background: #f3f2ef;
+      }
+      .status {
+        margin-top: 12px;
+        padding: 8px;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 14px;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>Generated Message</h2>
+        <div class="header-actions">
+          <button class="options-btn" id="optionsBtn" title="Open Options">⚙️</button>
+          <button class="close-btn" id="closeBtn" title="Close">&times;</button>
+        </div>
+      </div>
+      
+      <div id="content">
+        <div class="loading">
+          <div class="spinner"></div>
+          <span>Generating personalized message...</span>
+        </div>
+      </div>
+      
+      <div class="actions" id="actions" style="display: none;">
+        <button class="regenerate-btn" id="regenerateBtn">Regenerate</button>
+        <button class="copy-btn" id="copyBtn">Copy Message</button>
+      </div>
+      
+      <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

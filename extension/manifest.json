@@ -8,16 +8,20 @@
     "scripting",
     "storage",
     "contextMenus",
-    "tabs"
+    "tabs",
+    "action"
   ],
   "host_permissions": [
-    "https://www.linkedin.com/*"
+    "https://www.linkedin.com/*",
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "LinkedIn Customized Messages Generator"
+    "default_title": "LinkedIn Customized Messages Generator",
+    "default_popup": "popup.html"
   },
   "commands": {
     "open-options": {
