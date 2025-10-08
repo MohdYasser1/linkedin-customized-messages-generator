@@ -141,9 +141,13 @@ async function saveForm() {
 async function prefillFromCurrentTab() {
   const status = byId('status');
   const prefillBtn = byId('prefill');
+  const loading = byId('prefillLoading');
+  const loadingText = byId('prefillLoadingText');
   
   if (prefillBtn) prefillBtn.disabled = true;
-  if (status) status.textContent = 'Opening your profile...';
+  if (status) { status.textContent = ''; status.style.color = '#666'; }
+  if (loading) loading.style.display = 'inline-flex';
+  if (loadingText) loadingText.textContent = 'Opening your profile…';
 
   try {
     // Open LinkedIn profile tab
@@ -166,7 +170,7 @@ async function prefillFromCurrentTab() {
       chrome.tabs.onUpdated.addListener(onUpdated);
     });
 
-    if (status) status.textContent = 'Parsing your profile with AI...';
+  if (loadingText) loadingText.textContent = 'Parsing your profile with AI…';
     
     // Try to parse the profile
     const response = await chrome.tabs.sendMessage(tab.id, { type: 'PARSE_PROFILE_REQUEST' });
@@ -174,7 +178,15 @@ async function prefillFromCurrentTab() {
     if (response?.ok && response?.result) {
       const current = await getUserProfile();
       const profileData = response.result;
-      
+      const fullProfile = response.fullProfile || response.result || response; // fallback if backend returns all in result
+
+      // Save the full backend response and last parsed time
+      const lastParsed = new Date().toISOString();
+      chrome.storage.sync.set({
+        userProfileFull: fullProfile,
+        userProfileLastParsed: lastParsed
+      });
+
       // Update profile with parsed data (only if current fields are empty)
       const updated = {
         ...current,
@@ -185,20 +197,21 @@ async function prefillFromCurrentTab() {
         other: current.other || profileData.other || '',
         strengths: current.strengths || profileData.strengths || ''
       };
-      
+
       await setUserProfile(updated);
       await loadForm();
-      
+
+      if (loading) loading.style.display = 'none';
       if (status) {
         status.textContent = 'AI profile parsing successful!';
         status.style.color = '#28a745';
       }
-      
+
       // Close the LinkedIn tab
       if (tab && tab.id) {
         chrome.tabs.remove(tab.id);
       }
-      
+
     } else {
       // Handle different error types
       const errorMessage = response?.message || 'Could not parse profile data';
@@ -215,6 +228,7 @@ async function prefillFromCurrentTab() {
         userMessage = 'Could not find profile content on the page';
       }
       
+      if (loading) loading.style.display = 'none';
       if (status) {
         status.textContent = userMessage;
         status.style.color = '#d73a49';
@@ -227,7 +241,11 @@ async function prefillFromCurrentTab() {
     }
   } catch (error) {
     console.error('Prefill error:', error);
-    if (status) status.textContent = 'Prefill failed';
+    if (loading) loading.style.display = 'none';
+    if (status) {
+      status.textContent = 'Prefill failed';
+      status.style.color = '#d73a49';
+    }
   } finally {
     if (prefillBtn) prefillBtn.disabled = false;
   }

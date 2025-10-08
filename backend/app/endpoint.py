@@ -42,11 +42,6 @@ class LinkedInProfile(BaseModel):
     strengths: List[str] = Field(description="A list of key professional strengths.")
     others: str = Field(description="Any other relevant information.")
 
-llm = LLM(
-    model="gemini/gemini-flash-latest",
-    temperature=0.7,
-)
-
 PARSER_TASK_PROMPT ="""
 Fully analyze the provided LinkedIn profile HTML. First, extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
 
@@ -103,7 +98,6 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
     
     # Extract HTML content from the request
     html_content = request.get("html_content", "")
-    timestamp = request.get("timestamp", "")
     
     if not html_content:
         raise HTTPException(status_code=400, detail="No HTML content provided")
@@ -125,7 +119,6 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
             tasks=[process_user_profile_task],
             verbose=False    
         )
-
         result = parse_crew.kickoff(inputs={"user_html": html_content})
         print("Profile parsing completed successfully")
         return json.loads(result.raw)

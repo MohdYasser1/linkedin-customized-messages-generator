@@ -27,6 +27,16 @@ function setupEventListeners() {
   // Regenerate button
   document.getElementById('regenerateBtn').addEventListener('click', regenerateMessage);
 
+  // Generate button (no-op for now)
+  const genBtn = document.getElementById('generateBtn');
+  if (genBtn) {
+    genBtn.addEventListener('click', () => {
+      // Show loading spinner until generation is implemented
+      showLoading();
+      // TODO: Wire generation using selected tone/length/cta/extra inputs
+    });
+  }
+
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'MESSAGE_GENERATED') {
@@ -53,8 +63,8 @@ async function loadGeneratedMessage() {
       // Clear the stored message
       chrome.storage.local.remove(['generatedMessage', 'messageTarget']);
     } else {
-      // Show placeholder while waiting for generation
-      showLoading();
+      // Show a neutral placeholder until user clicks Generate
+      displayPlaceholder();
     }
   } catch (error) {
     console.error('Failed to load message:', error);
@@ -66,8 +76,8 @@ function showLoading() {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="loading">
-      <div class="spinner"></div>
       <span>Generating personalized message...</span>
+      <div class="spinner"></div>
     </div>
   `;
   document.getElementById('actions').style.display = 'none';

@@ -67,19 +67,26 @@
       }
       .loading {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: 20px;
         padding: 40px 20px;
         color: #666;
+        text-align: center;
       }
       .spinner {
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid #0a66c2;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #0a66c2;
         border-radius: 50%;
-        width: 20px;
-        height: 20px;
+        width: 32px;
+        height: 32px;
         animation: spin 1s linear infinite;
-        margin-right: 12px;
+        margin: 0 auto;
+      }
+      .loading span {
+        font-size: 1.1rem;
+        font-weight: 500;
       }
       @keyframes spin {
         0% { transform: rotate(0deg); }
@@ -129,6 +136,44 @@
         color: #721c24;
         border: 1px solid #f5c6cb;
       }
+
+      /* Controls section */
+      .controls {
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e6e6e6;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .controls .full-row {
+        grid-column: 1 / -1;
+      }
+      .controls label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 6px;
+      }
+      .controls select,
+      .controls input,
+      .controls textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 14px;
+        box-sizing: border-box;
+        background: #fff;
+      }
+      .controls textarea { resize: vertical; }
+      .controls .generate {
+        display: flex;
+        justify-content: flex-end;
+        grid-column: 1 / -1;
+      }
     </style>
   </head>
   <body>
@@ -140,11 +185,45 @@
           <button class="close-btn" id="closeBtn" title="Close">&times;</button>
         </div>
       </div>
+
+      <!-- Controls: Tone, Length, CTA, Extra Instructions -->
+      <div class="controls" id="controls">
+        <div>
+          <label for="toneSelect">Tone</label>
+          <select id="toneSelect">
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+            <option value="casual">Casual</option>
+            <option value="enthusiastic">Enthusiastic</option>
+            <option value="formal">Formal</option>
+          </select>
+        </div>
+        <div>
+          <label for="lengthSelect">Length</label>
+          <select id="lengthSelect">
+            <option value="connection">Connection Request</option>
+            <option value="short">Short</option>
+            <option value="medium">Medium</option>
+            <option value="long">Long</option>
+          </select>
+        </div>
+        <div class="full-row">
+          <label for="ctaInput">Call to Action</label>
+          <input id="ctaInput" type="text" placeholder="e.g., Are you open to a quick 15-min chat next week?" />
+        </div>
+        <div class="full-row">
+          <label for="extraInput">Extra Instructions</label>
+          <textarea id="extraInput" rows="3" placeholder="Any additional context or instructions for the message generator..."></textarea>
+        </div>
+        <div class="generate">
+          <button id="generateBtn" class="copy-btn" title="Generate message">Generate Message</button>
+        </div>
+      </div>
       
       <div id="content">
-        <div class="loading">
-          <div class="spinner"></div>
-          <span>Generating personalized message...</span>
+        <div class="placeholder">
+          <strong>No Generated Message</strong><br>
+          Pick your tone and length, add a call to action and extra notes, then click <em>Generate Message</em>.
         </div>
       </div>
       
