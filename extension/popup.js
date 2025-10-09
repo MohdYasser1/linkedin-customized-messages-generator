@@ -30,10 +30,18 @@ function setupEventListeners() {
   // Generate button (no-op for now)
   const genBtn = document.getElementById('generateBtn');
   if (genBtn) {
-    genBtn.addEventListener('click', () => {
-      // Show loading spinner until generation is implemented
-      showLoading();
-      // TODO: Wire generation using selected tone/length/cta/extra inputs
+    genBtn.addEventListener('click', async () => {
+      // Check if the current tab is a LinkedIn profile
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        const tab = tabs[0];
+        if (!tab || !tab.url || !/^https:\/\/www\.linkedin\.com\/in\//.test(tab.url)) {
+          displayError('Please open a LinkedIn profile (linkedin.com/in/...) and try again.');
+          return;
+        }
+        // Show loading spinner until generation is implemented
+        showLoading();
+        // TODO: Wire generation using selected tone/length/cta/extra inputs
+      });
     });
   }
 
@@ -100,13 +108,12 @@ function displayMessage(message) {
 function displayError(error) {
   const content = document.getElementById('content');
   content.innerHTML = `
-    <div class="placeholder">
-      <strong>Error generating message</strong><br>
+    <div class="placeholder error">
+      <strong>Error</strong><br>
       ${escapeHtml(error)}<br><br>
-      <em>Please try again or check your settings.</em>
+      <em style="color:#b3261e;font-size:1rem;font-weight:400;">Please try again or check your settings.</em>
     </div>
   `;
-  
   document.getElementById('actions').style.display = 'flex';
   hideStatus();
 }
