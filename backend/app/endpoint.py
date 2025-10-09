@@ -1,4 +1,6 @@
 import json
+import asyncio
+import litellm
 from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException, Header
@@ -251,9 +253,10 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
         # Create agent with the API key
         linkedin_profile_processor.llm = profile_llm
         process_user_profile_task.agent = linkedin_profile_processor
+        process_user_profile_task.async_execution = False
         # Execute the task
         parse_crew = Crew(
-            agegnts=[linkedin_profile_processor],
+            agents=[linkedin_profile_processor],
             tasks=[process_user_profile_task],
             verbose=False    
         )
@@ -263,7 +266,7 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
         
     except Exception as e:
         print(f"Error parsing profile: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to parse profile: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Failed to parse profile: {str(e)}")
 
 
 @router.post("/generate_user")
