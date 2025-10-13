@@ -187,35 +187,14 @@ async function prefillFromCurrentTab() {
   if (loadingText) loadingText.textContent = 'Opening your profile…';
 
   try {
-    // Open LinkedIn profile tab
-    const tab = await chrome.tabs.create({
-      url: 'https://www.linkedin.com/in/me/',
-      active: false
-    });
+    // Use the shared parseUserProfile function
+    if (loadingText) loadingText.textContent = 'Parsing your profile with AI…';
+    const response = await parseUserProfile();
     
-    // Wait for tab to load
-    await new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(false), 25000); // 25 second timeout
-      
-      const onUpdated = (tabId, info) => {
-        if (tabId === tab.id && info.status === 'complete') {
-          chrome.tabs.onUpdated.removeListener(onUpdated);
-          clearTimeout(timeout);
-          resolve(true);
-        }
-      };
-      chrome.tabs.onUpdated.addListener(onUpdated);
-    });
-
-  if (loadingText) loadingText.textContent = 'Parsing your profile with AI…';
-    
-    // Try to parse the profile
-    const response = await chrome.tabs.sendMessage(tab.id, { type: 'PARSE_PROFILE_REQUEST' });
-    
-    if (response?.ok && response?.result) {
+    if (response.ok) {
       const current = await getUserProfile();
       const profileData = response.result;
-      const fullProfile = response.fullProfile || response.result || response; // fallback if backend returns all in result
+      const fullProfile = response.fullProfile;
 
       // Save the full backend response and last parsed time
       const lastParsed = new Date().toISOString();
@@ -243,37 +222,14 @@ async function prefillFromCurrentTab() {
         status.textContent = 'AI profile parsing successful!';
         status.style.color = '#28a745';
       }
-
-      // Close the LinkedIn tab
-      if (tab && tab.id) {
-        chrome.tabs.remove(tab.id);
-      }
-
     } else {
-      // Handle different error types
-      const errorMessage = response?.message || 'Could not parse profile data';
-      const errorType = response?.error || 'unknown';
-      
-      let userMessage = 'Prefill failed';
-      if (errorType === 'no-api-key') {
-        userMessage = 'Please configure your API key in Settings tab first';
-      } else if (errorType === 'network-error') {
-        userMessage = 'Could not connect to AI service - check if backend is running';
-      } else if (errorType === 'backend-error') {
-        userMessage = 'AI processing failed - check your API key in Settings';
-      } else if (errorType === 'no-main-element') {
-        userMessage = 'Could not find profile content on the page';
-      }
+      // Use shared error message function
+      const userMessage = getProfileParseErrorMessage(response.error);
       
       if (loading) loading.style.display = 'none';
       if (status) {
         status.textContent = userMessage;
         status.style.color = '#d73a49';
-      }
-      
-      // Close the LinkedIn tab
-      if (tab && tab.id) {
-        chrome.tabs.remove(tab.id);
       }
     }
   } catch (error) {

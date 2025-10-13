@@ -98,6 +98,11 @@ async function parseProfileWithAI(htmlContent) {
         });
 
         if (!response.ok) {
+          // Check for specific status codes
+          if (response.status === 503) {
+            resolve({ ok: false, error: '503', message: 'The model is overloaded. Please try again later.' });
+            return;
+          }
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 

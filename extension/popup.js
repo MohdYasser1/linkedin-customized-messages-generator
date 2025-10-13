@@ -38,10 +38,8 @@ function setupEventListeners() {
           displayError('Please open a LinkedIn profile (linkedin.com/in/...) and try again.');
           return;
         }
-        // Show loading spinner until generation is implemented
-        showLoading();
         
-        // Check userProfileLastParsed from storage
+        // Check userProfileLastParsed and API key from storage BEFORE showing loading
         const result = await chrome.storage.sync.get(['userProfileLastParsed', 'geminiApiKey']);
         const lastParsed = result.userProfileLastParsed;
         const apiKey = result.geminiApiKey;
@@ -59,30 +57,46 @@ function setupEventListeners() {
           return;
         }
         
-        if (lastParsed) {
-          const lastParsedTime = new Date(lastParsed).getTime();
-          const now = Date.now();
-          const hoursDiff = (now - lastParsedTime) / (1000 * 60 * 60);
-          
-          if (hoursDiff < 24) {
-            // User profile is fresh (less than 24 hours old)
-            // TODO: Proceed with message generation
-            console.log('[popup] User profile is fresh (<24h), proceeding...');
-          } else {
-            // User profile is stale (more than 24 hours old)
-            // TODO: Prompt user to update profile or handle differently
-            console.log('[popup] User profile is stale (>24h), needs update...');
-          }
-        } else {
+        // Check if user profile exists
+        if (!lastParsed) {
           // No user profile parsed yet - open options page and show error there
           console.log('[popup] No user profile found in storage...');
           // Store the error message for the options page to display
           await chrome.storage.local.set({ 
-            optionsPageError: 'User profile needs to be set up first. Please click "Prefill from current LinkedIn tab" to set up your profile.' 
+            optionsPageError: 'User profile needs to be set up first. Please click "Prefill from current LinkedIn tab" to set up your profile.',
+            optionsPageTab: 'profile' // Open the Profile tab
           });
           // Open the options page
           chrome.runtime.openOptionsPage();
           return;
+        }
+        
+        // Now show loading spinner after all checks pass
+        showLoading();
+        
+        const lastParsedTime = new Date(lastParsed).getTime();
+        const now = Date.now();
+        const hoursDiff = (now - lastParsedTime) / (1000 * 60 * 60);
+        
+        if (hoursDiff < 24) {
+          // User profile is fresh (less than 24 hours old)
+          // TODO: Proceed with message generation
+          console.log('[popup] User profile is fresh (<24h), proceeding...');
+        } else {
+          // User profile is stale (more than 24 hours old) - trigger profile update
+          console.log('[popup] User profile is stale (>24h), updating profile...');
+          
+          const parseResult = await parseUserProfile();
+          
+          if (parseResult.ok) {
+            console.log('[popup] Profile updated successfully, proceeding with message generation...');
+            // Profile updated, now proceed with generation
+            // TODO: Proceed with message generation
+          } else {
+            const errorMsg = getProfileParseErrorMessage(parseResult.error);
+            displayError(`Failed to update your profile: ${errorMsg}. Please try again or update manually in Options.`);
+            return;
+          }
         }
         
         // TODO: Wire generation using selected tone/length/cta/extra inputs
