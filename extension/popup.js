@@ -40,9 +40,24 @@ function setupEventListeners() {
         }
         // Show loading spinner until generation is implemented
         showLoading();
+        
         // Check userProfileLastParsed from storage
-        const result = await chrome.storage.sync.get(['userProfileLastParsed']);
+        const result = await chrome.storage.sync.get(['userProfileLastParsed', 'geminiApiKey']);
         const lastParsed = result.userProfileLastParsed;
+        const apiKey = result.geminiApiKey;
+        
+        // Check if API key is set
+        if (!apiKey || apiKey.trim() === '') {
+          console.log('[popup] No API key found in storage...');
+          // Store the error message and tab preference for the options page
+          await chrome.storage.local.set({ 
+            optionsPageError: 'Gemini API key needs to be set up first. Please enter your API key below and click "Save API Key".',
+            optionsPageTab: 'settings' // Open the API Settings tab
+          });
+          // Open the options page
+          chrome.runtime.openOptionsPage();
+          return;
+        }
         
         if (lastParsed) {
           const lastParsedTime = new Date(lastParsed).getTime();

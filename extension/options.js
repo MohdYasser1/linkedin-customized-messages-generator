@@ -123,17 +123,41 @@ async function loadForm() {
   // Also load the API key
   await loadApiKey();
   
-  // Check for error message from popup
-  const result = await chrome.storage.local.get(['optionsPageError']);
+  // Check for error message and tab preference from popup
+  const result = await chrome.storage.local.get(['optionsPageError', 'optionsPageTab']);
   if (result.optionsPageError) {
-    const status = byId('status');
+    // Switch to the specified tab if provided
+    if (result.optionsPageTab) {
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabPanes = document.querySelectorAll('.tab-pane');
+      
+      // Activate the specified tab
+      tabButtons.forEach(btn => {
+        if (btn.dataset.tab === result.optionsPageTab) {
+          // Remove active from all buttons
+          tabButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Remove active from all panes
+          tabPanes.forEach(pane => pane.classList.remove('active'));
+          const targetPane = document.getElementById(`${result.optionsPageTab}-tab`);
+          if (targetPane) {
+            targetPane.classList.add('active');
+          }
+        }
+      });
+    }
+    
+    // Display error in the appropriate status element
+    const statusId = result.optionsPageTab === 'settings' ? 'apiStatus' : 'status';
+    const status = byId(statusId);
     if (status) {
       status.textContent = result.optionsPageError;
       status.style.color = '#d73a49';
       status.style.fontWeight = '600';
     }
-    // Clear the error after displaying
-    chrome.storage.local.remove(['optionsPageError']);
+    // Clear the error and tab preference after displaying
+    chrome.storage.local.remove(['optionsPageError', 'optionsPageTab']);
   }
 }
 
