@@ -122,6 +122,19 @@ async function loadForm() {
   
   // Also load the API key
   await loadApiKey();
+  
+  // Check for error message from popup
+  const result = await chrome.storage.local.get(['optionsPageError']);
+  if (result.optionsPageError) {
+    const status = byId('status');
+    if (status) {
+      status.textContent = result.optionsPageError;
+      status.style.color = '#d73a49';
+      status.style.fontWeight = '600';
+    }
+    // Clear the error after displaying
+    chrome.storage.local.remove(['optionsPageError']);
+  }
 }
 
 async function saveForm() {

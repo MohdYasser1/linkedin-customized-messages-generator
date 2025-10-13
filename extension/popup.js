@@ -32,7 +32,7 @@ function setupEventListeners() {
   if (genBtn) {
     genBtn.addEventListener('click', async () => {
       // Check if the current tab is a LinkedIn profile
-      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      chrome.tabs.query({active: true, currentWindow: true}, async (tabs) => {
         const tab = tabs[0];
         if (!tab || !tab.url || !/^https:\/\/www\.linkedin\.com\/in\//.test(tab.url)) {
           displayError('Please open a LinkedIn profile (linkedin.com/in/...) and try again.');
@@ -40,6 +40,36 @@ function setupEventListeners() {
         }
         // Show loading spinner until generation is implemented
         showLoading();
+        // Check userProfileLastParsed from storage
+        const result = await chrome.storage.sync.get(['userProfileLastParsed']);
+        const lastParsed = result.userProfileLastParsed;
+        
+        if (lastParsed) {
+          const lastParsedTime = new Date(lastParsed).getTime();
+          const now = Date.now();
+          const hoursDiff = (now - lastParsedTime) / (1000 * 60 * 60);
+          
+          if (hoursDiff < 24) {
+            // User profile is fresh (less than 24 hours old)
+            // TODO: Proceed with message generation
+            console.log('[popup] User profile is fresh (<24h), proceeding...');
+          } else {
+            // User profile is stale (more than 24 hours old)
+            // TODO: Prompt user to update profile or handle differently
+            console.log('[popup] User profile is stale (>24h), needs update...');
+          }
+        } else {
+          // No user profile parsed yet - open options page and show error there
+          console.log('[popup] No user profile found in storage...');
+          // Store the error message for the options page to display
+          await chrome.storage.local.set({ 
+            optionsPageError: 'User profile needs to be set up first. Please click "Prefill from current LinkedIn tab" to set up your profile.' 
+          });
+          // Open the options page
+          chrome.runtime.openOptionsPage();
+          return;
+        }
+        
         // TODO: Wire generation using selected tone/length/cta/extra inputs
       });
     });
