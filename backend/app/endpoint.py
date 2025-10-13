@@ -268,19 +268,8 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
         print(f"Error parsing profile: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Failed to parse profile: {str(e)}")
 
-
-@router.post("/generate_user")
-async def generate_user_message(request: dict, authorization: Optional[str] = Header(None)):
-    print("Request received for user message generation:", request)
-    
-    # Extract API key from Authorization header
-    api_key = None
-    if authorization and authorization.startswith("Bearer "):
-        api_key = authorization[7:]  # Remove "Bearer " prefix
-    
-    if not api_key:
-        raise HTTPException(status_code=401, detail="No API key provided in Authorization header")
-
+# Create a POST endpoint to generate a message based on profile data
+# The request body should include: user_data, target_html, tone, length, call_to_action, extra_instructions
 @router.post("/generate")
 async def generate_message(request: dict):
     print("Request received:", request)
