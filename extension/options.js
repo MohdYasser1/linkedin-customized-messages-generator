@@ -194,14 +194,8 @@ async function prefillFromCurrentTab() {
     if (response.ok) {
       const current = await getUserProfile();
       const profileData = response.result;
-      const fullProfile = response.fullProfile;
 
-      // Save the full backend response and last parsed time
-      const lastParsed = new Date().toISOString();
-      chrome.storage.sync.set({
-        userProfileFull: fullProfile,
-        userProfileLastParsed: lastParsed
-      });
+      // Note: Storage is already handled by parseUserProfile() in shared.js
 
       // Update profile with parsed data (only if current fields are empty)
       const updated = {

@@ -160,18 +160,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Received GENERATE_MESSAGE:", message);
     const payload = message.payload;
     
-    // Transform the payload to match what the backend expects
+    // The payload now contains: user_data, target_html, tone, length, call_to_action, extra_instruction
     const backendPayload = {
-      message: payload.htmlContent || '',  // Send HTML content as the message
-      url: payload.url,
-      timestamp: payload.timestamp,
-      type: payload.type
+      user_data: payload.user_data,
+      target_html: payload.target_html,
+      tone: payload.tone,
+      length: payload.length,
+      call_to_action: payload.call_to_action,
+      extra_instruction: payload.extra_instruction
     };
     
     console.log("Sending to backend:", backendPayload);
     
     // call backend, respond asynchronously
-    sendToBackend(backendPayload).then(async (resp) => {
+    
+    (backendPayload).then(async (resp) => {
       console.log("Message generated successfully:", resp);
       
       // Store the generated message for popup

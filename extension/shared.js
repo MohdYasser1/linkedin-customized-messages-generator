@@ -47,6 +47,15 @@ async function parseUserProfile() {
     
     if (response?.ok && response?.result) {
       console.log('[shared] Profile parsed successfully');
+      
+      // Save the full backend response and last parsed time to storage
+      const lastParsed = new Date().toISOString();
+      await chrome.storage.sync.set({
+        userProfileFull: response.fullProfile || response.result,
+        userProfileLastParsed: lastParsed
+      });
+      console.log('[shared] Saved profile to storage with timestamp:', lastParsed);
+      
       return { ok: true, result: response.result, fullProfile: response.fullProfile };
     } else {
       const errorMessage = response?.message || 'Could not parse profile data';

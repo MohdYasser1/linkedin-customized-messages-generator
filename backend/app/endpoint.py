@@ -1,4 +1,5 @@
 import json
+import re
 import asyncio
 import litellm
 from http import HTTPStatus
@@ -23,10 +24,10 @@ class Experience(BaseModel):
 # Define the structure for a single education entry
 class Education(BaseModel):
     institution: str = Field(description="The name of the school or university.")
-    degree: str = Field(description="The degree name.")
-    field_of_study: str = Field(description="The field of study.")
-    duration: str = Field(description="The years of attendance.")
-    grade: str = Field(description="The grade mentioned.")
+    degree: Optional[str] = Field(default=None, description="The degree name.")
+    field_of_study: Optional[str] = Field(default=None, description="The field of study.")
+    duration: Optional[str] = Field(default=None, description="The years of attendance.")
+    grade: Optional[str] = Field(default=None, description="The grade mentioned.")
 
 # Define the structure for a single activity
 class Activity(BaseModel):
@@ -39,12 +40,12 @@ class LinkedInProfile(BaseModel):
     name: str = Field(description="The user's full name.")
     headline: str = Field(description="The professional headline.")
     about: str = Field(description="The complete text from the 'About' section.")
-    experiences: List[Experience] = Field(description="A list of all job experiences.")
-    education: List[Education] = Field(description="A list of all educational entries.")
-    activities: List[Activity] = Field(description="A list of recent activities.")
+    experiences: List[Experience] = Field(default=[], description="A list of all job experiences.")
+    education: List[Education] = Field(default=[], description="A list of all educational entries.")
+    activities: List[Activity] = Field(default=[], description="A list of recent activities.")
     interests: str = Field(description="A synthesized paragraph about professional interests.")
     strengths: List[str] = Field(description="A list of key professional strengths.")
-    others: str = Field(description="Any other relevant information.")
+    other: Optional[str] = Field(default=None, description="Any other relevant information.")
 
 # Define the structure for connection vectors
 class ConnectionVector(BaseModel):
@@ -60,6 +61,16 @@ class EngagementBrief(BaseModel):
     """An actionable brief containing ranked connection vectors and seniority analysis."""
     seniority_dynamic: str = Field(description="Describes the seniority relationship (e.g., 'Peer to Peer', 'Junior to Senior', 'Senior to Junior').")
     connection_vectors: List[ConnectionVector]
+
+# Define the structure for message generation request
+class GenerateMessageRequest(BaseModel):
+    user_data: dict = Field(description="The user's LinkedIn profile data")
+    target_html: str = Field(description="The HTML content of the target profile")
+    tone: str = Field(description="The desired tone for the message (e.g., 'professional', 'casual', 'friendly')")
+    length: str = Field(description="The desired length of the message (e.g., 'short', 'medium', 'long')")
+    call_to_action: str = Field(description="The desired call to action (e.g., 'connect', 'meeting', 'coffee chat')")
+    extra_instruction: Optional[str] = Field(default="", description="Any additional instructions for message generation")
+
 
 
 
@@ -96,7 +107,12 @@ HTML Content to Analyze:
 """
 process_user_profile_task = Task(
     description=PARSER_TASK_PROMPT.format(file_content='{user_html}'),
-    expected_output="A single, valid JSON object containing the user's complete profile information, matching the schema of the LinkedInProfile model.",
+    expected_output="""
+        A single, valid JSON object containing the user's complete profile information, matching the schema of the LinkedInProfile model.
+        **CRITICAL:** The output MUST be ONLY the raw JSON object itself.
+        Do NOT include any explanatory text, comments, or markdown formatting like ```json or ```.
+        Your entire response must start with `{` and end with `}`.
+    """,
     agent=linkedin_profile_processor,
     output_json=LinkedInProfile,
     verbose=True,
@@ -245,7 +261,7 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
     try:
         # Update the LLM with the provided API key
         profile_llm = LLM(
-            model="gemini/gemini-flash-latest",
+            model="gemini/gemini-2.0-flash",
             temperature=0.7,
             api_key=api_key
         )
@@ -262,38 +278,43 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
         )
         result = parse_crew.kickoff(inputs={"user_html": html_content})
         print("Profile parsing completed successfully")
-        return json.loads(result.raw)
+        # print("Raw output:", result.raw)
+
+        # Use regex to extract the JSON object from the raw output
+        json_match = re.search(r'\{.*\}', result.raw, re.DOTALL)
+        if not json_match:
+            # If no '{...}' is found at all, the LLM failed completely.
+            raise HTTPException(status_code=500, detail="Failed to find a valid JSON object in the model's response.")
+        json_string = json_match.group(0)
+
+        return json.loads(json_string)
         
     except Exception as e:
         print(f"Error parsing profile: {str(e)}")
         raise HTTPException(status_code=503, detail=f"Failed to parse profile: {str(e)}")
 
 # Create a POST endpoint to generate a message based on profile data
-# The request body should include: user_data, target_html, tone, length, call_to_action, extra_instructions
 @router.post("/generate")
-async def generate_message(request: dict):
-    print("Request received:", request)
+async def generate_message(request: GenerateMessageRequest, authorization: Optional[str] = Header(None)):
+    print("Generate message request received")
+    print(f"Tone: {request.tone}")
+    print(f"Length: {request.length}")
+    print(f"Call to action: {request.call_to_action}")
+    print(f"Extra instruction: {request.extra_instruction}")
+    print(f"Target HTML length: {len(request.target_html)} characters")
+    print(f"User data keys: {list(request.user_data.keys())}")
+
+    api_key = None
+    if authorization and authorization.startswith("Bearer "):
+        api_key = authorization[7:]  # Remove "Bearer " prefix
     
-    # Extract data from the request
-    html_content = request.get("message", "")  # HTML content from LinkedIn profile
-    url = request.get("url", "")
-    timestamp = request.get("timestamp", "")
-    profile_type = request.get("type", "")
+    if not api_key:
+        raise HTTPException(status_code=401, detail="No API key provided in Authorization header")
     
-    print(f"Processing {profile_type} from {url}")
-    # print(f"HTML content length: {len(html_content)} characters")
+    # TODO: Implement actual message generation logic
+    # For now, just return a placeholder response
     
-    # Here you would typically call your LLM or message generation logic
-    # For demonstration, we'll just return a simple response
-    if profile_type == "TARGET_PROFILE":
-        generated_message = "Hi! I'd love to connect and learn more about your experience. Would you be open to a brief chat?"
-    else:
-        generated_message = f"Generated response based on profile data (HTML length: {len(html_content)})"
-    
-    # Return the generated message as a JSON response
     return {
-        "generated_message": generated_message,
-        "message": generated_message,  # Alternative field name for compatibility
-        "processed_url": url,
-        "timestamp": timestamp
+        "generated_message": "This is a placeholder message. Message generation logic will be implemented here.",
+        "status": "success"
     }

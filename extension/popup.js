@@ -71,35 +71,82 @@ function setupEventListeners() {
           return;
         }
         
-        // Now show loading spinner after all checks pass
-        showLoading();
-        
         const lastParsedTime = new Date(lastParsed).getTime();
         const now = Date.now();
         const hoursDiff = (now - lastParsedTime) / (1000 * 60 * 60);
         
-        if (hoursDiff < 24) {
-          // User profile is fresh (less than 24 hours old)
-          // TODO: Proceed with message generation
-          console.log('[popup] User profile is fresh (<24h), proceeding...');
-        } else {
+        if (hoursDiff > 24) {
           // User profile is stale (more than 24 hours old) - trigger profile update
           console.log('[popup] User profile is stale (>24h), updating profile...');
+          
+          // Show loading with profile update message
+          showLoading('Updating your profile...');
           
           const parseResult = await parseUserProfile();
           
           if (parseResult.ok) {
             console.log('[popup] Profile updated successfully, proceeding with message generation...');
-            // Profile updated, now proceed with generation
-            // TODO: Proceed with message generation
+            // Profile updated, now show generating message
+            showLoading('Generating personalized message...');
           } else {
             const errorMsg = getProfileParseErrorMessage(parseResult.error);
             displayError(`Failed to update your profile: ${errorMsg}. Please try again or update manually in Options.`);
             return;
           }
+        } else {
+          // Profile is fresh, show loading for message generation
+          showLoading('Generating personalized message...');
         }
         
-        // TODO: Wire generation using selected tone/length/cta/extra inputs
+        // Get the updated user data from storage
+        const storageData = await chrome.storage.sync.get(['userProfileFull']);
+        const userData = storageData.userProfileFull;
+        
+        if (!userData) {
+          displayError('User profile data not found. Please update your profile in Options.');
+          return;
+        }
+        
+        // Get form values for tone, length, CTA, and extra instructions
+        const tone = document.getElementById('toneSelect')?.value || 'professional';
+        const length = document.getElementById('lengthSelect')?.value || 'medium';
+        const cta = document.getElementById('ctaInput')?.value || '';
+        const extra = document.getElementById('extraInput')?.value || '';
+        
+        // Get target profile HTML from the current tab via content script
+        try {
+          const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PROFILE_HTML' });
+          
+          if (!response?.ok || !response?.htmlContent) {
+            displayError('Failed to extract profile HTML. Please refresh the page and try again.');
+            return;
+          }
+          
+          const targetHtml = response.htmlContent;
+          
+          // Create the payload for the background script
+          const payload = {
+            user_data: userData,
+            target_html: targetHtml,
+            tone: tone,
+            length: length,
+            call_to_action: cta,
+            extra_instruction: extra
+          };
+          
+          console.log('[popup] Sending generate message request with payload');
+          
+          // Send the payload to the background script
+          chrome.runtime.sendMessage({
+            type: 'GENERATE_MESSAGE',
+            payload: payload
+          });
+          
+        } catch (error) {
+          console.error('[popup] Error getting target HTML:', error);
+          displayError('Failed to read profile content. Please make sure you are on a LinkedIn profile page.');
+          return;
+        }
       });
     });
   }
@@ -139,11 +186,11 @@ async function loadGeneratedMessage() {
   }
 }
 
-function showLoading() {
+function showLoading(message = 'Generating personalized message...') {
   const content = document.getElementById('content');
   content.innerHTML = `
     <div class="loading">
-      <span>Generating personalized message...</span>
+      <span>${message}</span>
       <div class="spinner"></div>
     </div>
   `;
