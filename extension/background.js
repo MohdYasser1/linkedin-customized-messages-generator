@@ -173,8 +173,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Sending to backend:", backendPayload);
     
     // call backend, respond asynchronously
-    
-    (backendPayload).then(async (resp) => {
+    sendToBackend(backendPayload).then(async (resp) => {
       console.log("Message generated successfully:", resp);
       
       // Store the generated message for popup

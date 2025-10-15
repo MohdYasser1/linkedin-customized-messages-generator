@@ -2,6 +2,7 @@
 
 let currentMessage = '';
 let currentTarget = null;
+let messageTextarea = null;
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', () => {
@@ -136,10 +137,27 @@ function setupEventListeners() {
           
           console.log('[popup] Sending generate message request with payload');
           
-          // Send the payload to the background script
+          // Send the payload to the background script and handle response directly
           chrome.runtime.sendMessage({
             type: 'GENERATE_MESSAGE',
             payload: payload
+          }, (resp) => {
+            if (chrome.runtime.lastError) {
+              console.error('[popup] Background error:', chrome.runtime.lastError);
+              displayError('Failed to generate message. Please try again.');
+              return;
+            }
+            if (!resp) {
+              displayError('No response from background.');
+              return;
+            }
+            if (resp.ok) {
+              currentTarget = payload;
+              const gm = resp.result?.generated_message || resp.result?.message || 'Generated message';
+              displayMessage(gm);
+            } else {
+              displayError(resp.error || 'Message generation failed.');
+            }
           });
           
         } catch (error) {
@@ -197,16 +215,17 @@ function showLoading(message = 'Generating personalized message...') {
   document.getElementById('actions').style.display = 'none';
 }
 
+
 function displayMessage(message) {
   currentMessage = message;
-  
   const content = document.getElementById('content');
   content.innerHTML = `
-    <div class="message-content">
-      ${escapeHtml(message)}
+    <div class="message-editable">
+      <label for="messageTextarea" style="font-weight:600;display:block;margin-bottom:6px;">Generated Message (editable):</label>
+      <textarea id="messageTextarea" rows="7" style="width:100%;font-size:1rem;padding:10px;border-radius:8px;border:1px solid #d0d7de;resize:vertical;">${message}</textarea>
     </div>
   `;
-  
+  messageTextarea = document.getElementById('messageTextarea');
   document.getElementById('actions').style.display = 'flex';
   hideStatus();
 }
@@ -238,37 +257,59 @@ function displayPlaceholder() {
 }
 
 async function copyMessage() {
-  if (!currentMessage) {
+  let textToCopy = currentMessage;
+  if (messageTextarea) {
+    textToCopy = messageTextarea.value;
+  }
+  if (!textToCopy) {
     showStatus('No message to copy', 'error');
     return;
   }
-
   try {
-    await navigator.clipboard.writeText(currentMessage);
+    await navigator.clipboard.writeText(textToCopy);
     showStatus('Message copied to clipboard!', 'success');
   } catch (error) {
     console.error('Failed to copy message:', error);
-    
     // Fallback: create a textarea and select the text
     const textarea = document.createElement('textarea');
-    textarea.value = currentMessage;
+    textarea.value = textToCopy;
     document.body.appendChild(textarea);
     textarea.select();
     document.execCommand('copy');
     document.body.removeChild(textarea);
-    
     showStatus('Message copied to clipboard!', 'success');
   }
 }
 
 async function regenerateMessage() {
-  showLoading();
+  if (!currentTarget) {
+    displayError('No previous message to regenerate. Please generate a message first.');
+    return;
+  }
+  
+  showLoading('Regenerating message...');
   
   try {
-    // Request regeneration from background script
+    // Request regeneration from background script using GENERATE_MESSAGE
     chrome.runtime.sendMessage({
-      type: 'REGENERATE_MESSAGE',
+      type: 'GENERATE_MESSAGE',
       payload: currentTarget
+    }, (resp) => {
+      if (chrome.runtime.lastError) {
+        console.error('[popup] Background error:', chrome.runtime.lastError);
+        displayError('Failed to regenerate message. Please try again.');
+        return;
+      }
+      if (!resp) {
+        displayError('No response from background.');
+        return;
+      }
+      if (resp.ok) {
+        const gm = resp.result?.generated_message || resp.result?.message || 'Generated message';
+        displayMessage(gm);
+      } else {
+        displayError(resp.error || 'Message regeneration failed.');
+      }
     });
   } catch (error) {
     console.error('Failed to regenerate message:', error);
