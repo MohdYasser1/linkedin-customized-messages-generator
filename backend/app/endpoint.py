@@ -1,17 +1,15 @@
 import json
 import re
-import asyncio
-import litellm
-from http import HTTPStatus
 
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from starlette.responses import Response
 
 from crewai import LLM, Agent, Task, Crew
 
 
+# Global model name configuration
+MODEL_NAME = "gemini/gemini-2.5-flash-lite"
 
 # Define the structure for a single experience
 class Experience(BaseModel):
@@ -45,7 +43,7 @@ class LinkedInProfile(BaseModel):
     activities: List[Activity] = Field(default=[], description="A list of recent activities.")
     interests: str = Field(description="A synthesized paragraph about professional interests.")
     strengths: List[str] = Field(description="A list of key professional strengths.")
-    other: Optional[str] = Field(default=None, description="Any other relevant information.")
+    other: Optional[str] = Field(default=None, description="Any other relevant information like certifications or projects etc.")
 
 # Define the structure for connection vectors
 class ConnectionVector(BaseModel):
@@ -92,17 +90,29 @@ linkedin_profile_processor = Agent(
 )
 
 # Parsing LinkedIn profile tasks
+# PARSER_TASK_PROMPT ="""
+# Fully analyze the provided LinkedIn profile HTML. First, extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
+
+# Second, synthesize a summary of the user's professional interests as a concise paragraph that summarizes the user's professional
+#     passions and add it to the interests section and a list of their key strengths based on the extracted data.
+
+# Finally, structure all of this information into a JSON object that strictly follows the provided schema.
+
+# HTML Content to Analyze:
+# ```html
+# `{file_content}`
+# ```
+# """
 PARSER_TASK_PROMPT ="""
-Fully analyze the provided LinkedIn profile HTML. First, extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
+Fully analyze the provided LinkedIn profile HTML. Extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
 
-Second, synthesize a summary of the user's professional interests as a concise paragraph that summarizes the user's professional
-    passions and interests and a list of their key strengths based on the extracted data.
+Synthesize a summary of the user's professional interests as a concise paragraph that summarizes the user's professional passions and add it to the interests section and a list of their key strengths based on the extracted data.
 
-Finally, structure all of this information into a JSON object that strictly follows the provided schema.
+Structure all of this information into a JSON object that strictly follows the provided schema.
 
 HTML Content to Analyze:
 ```html
-`{file_content}`
+{file_content}
 ```
 """
 process_user_profile_task = Task(
@@ -112,6 +122,46 @@ process_user_profile_task = Task(
         **CRITICAL:** The output MUST be ONLY the raw JSON object itself.
         Do NOT include any explanatory text, comments, or markdown formatting like ```json or ```.
         Your entire response must start with `{` and end with `}`.
+
+        Example:
+        {
+            "name": "Jane Doe",
+            "headline": "Senior Software Engineer at TechCorp",
+            "about": "Experienced software engineer with a passion for developing innovative programs...",
+            "experiences": [
+                {
+                    "title": "Senior Software Engineer",
+                    "company": "TechCorp",
+                    "employment_type": "Full-time",
+                    "duration": "Jan 2020 - Present (4 yrs)",
+                    "description": "Leading a team of developers to build scalable web applications..."
+                }
+            ],
+            "education": [
+                {
+                    "institution": "State University",
+                    "degree": "Bachelor of Science",
+                    "field_of_study": "Computer Science",
+                    "duration": "2015 - 2019",
+                    "grade": "3.8 GPA"
+                }
+            ],
+            "activities": [
+                {
+                    "type": "posted this",
+                    "posted_ago": "2 days ago",
+                    "content": "Excited to share my latest project on AI-driven development..."
+                },
+                {
+                    "type": "reposted this",
+                    "posted_ago": "1 week ago",
+                    "content": "Check out this insightful article on the future of technology..."
+                }
+            ],
+            "interests": "Jane is passionate about AI, machine learning, and open-source software development...",
+            "strengths": ["Leadership", "Full-Stack Development", "Project Management"],
+            "other": "Certified Scrum Master, Contributor to Open Source Projects"
+        }
     """,
     agent=linkedin_profile_processor,
     output_json=LinkedInProfile,
@@ -145,7 +195,9 @@ engagement_strategist = Agent(
 # Profile matching task
 connection_analysis_task = Task(
     description="""
-    As a Strategic Engagement Analyst, your mission is to produce an actionable brief on the most potent connection vectors between a 'user' and a 'target'. The complete JSON data for both individuals is provided from the context of previous tasks.
+    As a Strategic Engagement Analyst, your mission is to produce an actionable brief on the most potent connection vectors between a 'user' and a 'target'. 
+    user_data: `{user_data}`
+    target_data: (from context of target parsing task)
 
     Your thinking process must be as follows:
     1.  **Assess Seniority Dynamic:** First, compare the user's and target's headlines and experience levels. Determine their professional relationship and set the 'seniority_dynamic' to one of: 'Peer to Peer', 'Junior to Senior', or 'Senior to Junior'.
@@ -183,7 +235,7 @@ connection_analysis_task = Task(
     """,
     agent=engagement_strategist,
     output_json=EngagementBrief,
-    context=[process_user_profile_task, process_target_profile_task]
+    context=[process_target_profile_task]
 )
 
 
@@ -215,23 +267,27 @@ write_message_task = Task(
     - **Extra Instructions:** `{extra_instructions}`
 
     **2. Rules of Engagement (Your step-by-step process):**
-    a. **Prioritize the Length Constraint:** First, identify the length requirement. If it is a 'Connection Request', the 200-character limit is the MOST IMPORTANT rule. Everything you write must fit.
+    a. **Adhere to the Length Constraint:** Your primary guide for length is the **Length Constraint** input.
+        - **If 'long', write a comprehensive and detailed message (approx. 150-200 words). Expand on the hook and provide more context.**
+        - If 'medium', write a balanced and direct message (approx. 75-100 words).
+        - If 'short', be brief and to the point (approx. 25-50 words).
+        - **If 'Connection Request', the message MUST be under the strict 200-character limit.**
     b. **Select the Strongest Hook:** From the Strategic Brief, select the `actionable_opener` from the highest-ranked (`rank` 1) connection vector. This will be the foundation of your message.
     c. **Draft the Body:** Weave the selected hook into a concise body. Your writing must respect the `seniority_dynamic` provided in the brief (e.g., more deference for 'Junior to Senior').
     d. **Integrate the CTA:** Naturally embed the `{call_to_action}` towards the end of the message. It should feel like a logical next step, not a demand.
     e. **Apply Tone & Special Instructions:** Review and edit the draft to perfectly match the requested `{tone}` and incorporate any `{extra_instructions}`.
     f. **Final Polish:** Read the message one last time. Cut any unnecessary words. Ensure it is flawless and meets all constraints.
+    g. **Human Like Messaging:** Ensure the message sounds natural and human-like, avoiding overly formal or robotic language.
 
     **3. Critical Constraints to Follow:**
-    - **DO NOT** exceed the 200-character limit for a 'Connection Request'.
+    - The 200-character limit is an absolute rule, but it applies **ONLY** when the `{length}` is specifically 'Connection Request'. **Do not apply this limit to 'short', 'medium', or 'long' messages.**
     - **DO NOT** sound like a generic template. The message must feel personal and unique.
     - **DO NOT** include placeholders like `{tone}` in your final output.
 
-    Your final output is ONLY the text of the message itself.
     """,
     expected_output="A single block of text representing the final, ready-to-send message, adhering to all constraints.",
     agent=message_writer_agent,
-    context=[connection_analysis_task] # Receives the 'EngagementBrief' from the previous task
+    context=[process_target_profile_task, connection_analysis_task] # Receives the 'EngagementBrief' from the previous task
 )
 
 
@@ -261,8 +317,8 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
     try:
         # Update the LLM with the provided API key
         profile_llm = LLM(
-            model="gemini/gemini-2.0-flash",
-            temperature=0.7,
+            model=MODEL_NAME,
+            temperature=0.6,
             api_key=api_key
         )
         
@@ -297,24 +353,61 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
 @router.post("/generate")
 async def generate_message(request: GenerateMessageRequest, authorization: Optional[str] = Header(None)):
     print("Generate message request received")
-    print(f"Tone: {request.tone}")
-    print(f"Length: {request.length}")
-    print(f"Call to action: {request.call_to_action}")
-    print(f"Extra instruction: {request.extra_instruction}")
-    print(f"Target HTML length: {len(request.target_html)} characters")
-    print(f"User data keys: {list(request.user_data.keys())}")
 
     api_key = None
     if authorization and authorization.startswith("Bearer "):
         api_key = authorization[7:]  # Remove "Bearer " prefix
-    
-    if not api_key:
+
+    if not api_key or api_key == "null":
+        print("No API key provided")
         raise HTTPException(status_code=401, detail="No API key provided in Authorization header")
     
     # TODO: Implement actual message generation logic
     # For now, just return a placeholder response
+
+    if not request.target_html:
+        raise HTTPException(status_code=400, detail="target html must be provided. Refresh the page and try again.")
     
+    try:
+        # Update the LLM with the provided API key
+        message_llm = LLM(
+            model=MODEL_NAME,
+            temperature=0.8,
+            api_key=api_key
+        )
+
+        # Set up agents with the API key
+        linkedin_profile_processor.llm = message_llm
+        engagement_strategist.llm = message_llm
+        message_writer_agent.llm = message_llm
+        process_target_profile_task.agent = linkedin_profile_processor
+        connection_analysis_task.agent = engagement_strategist
+        write_message_task.agent = message_writer_agent
+        process_target_profile_task.async_execution = False
+
+        # Execute the tasks in sequence
+        message_crew = Crew(
+            agents=[linkedin_profile_processor, engagement_strategist, message_writer_agent],
+            tasks=[process_target_profile_task, connection_analysis_task, write_message_task],
+            verbose=False    
+        )
+
+        result = message_crew.kickoff(inputs={
+            "user_data": request.user_data,
+            "target_html": request.target_html,
+            "tone": request.tone,
+            "length": request.length,
+            "call_to_action": request.call_to_action,
+            "extra_instructions": request.extra_instruction or ""
+        })
+
+        print("Message generation completed successfully")
+
+    except Exception as e:
+        print(f"Error generating message: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Failed to generate message: {str(e)}")
+
     return {
-        "generated_message": "This is a placeholder message. Message generation logic will be implemented here.",
+        "generated_message": result.raw,
         "status": "success"
     }

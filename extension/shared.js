@@ -1,6 +1,18 @@
 // shared.js - Shared utility functions for the extension
 
 /**
+ * Gets the Gemini API key from storage
+ * @returns {Promise<string>} The API key or empty string
+ */
+function getApiKey() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get({ geminiApiKey: '' }, (items) => {
+      resolve(items.geminiApiKey || '');
+    });
+  });
+}
+
+/**
  * Parses the user's LinkedIn profile by opening their profile page,
  * sending a parse request to the content script, and saving the result.
  * @returns {Promise<{ok: boolean, error?: string, result?: any}>}

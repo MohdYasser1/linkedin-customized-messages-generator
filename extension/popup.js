@@ -290,10 +290,26 @@ async function regenerateMessage() {
   showLoading('Regenerating message...');
   
   try {
+    // Get the CURRENT form values (tone, length, CTA, extra)
+    const tone = document.getElementById('toneSelect')?.value || 'professional';
+    const length = document.getElementById('lengthSelect')?.value || 'medium';
+    const cta = document.getElementById('ctaInput')?.value || '';
+    const extra = document.getElementById('extraInput')?.value || '';
+    
+    // Create updated payload with current form values but keeping user_data and target_html
+    const updatedPayload = {
+      user_data: currentTarget.user_data,
+      target_html: currentTarget.target_html,
+      tone: tone,
+      length: length,
+      call_to_action: cta,
+      extra_instruction: extra
+    };
+    
     // Request regeneration from background script using GENERATE_MESSAGE
     chrome.runtime.sendMessage({
       type: 'GENERATE_MESSAGE',
-      payload: currentTarget
+      payload: updatedPayload
     }, (resp) => {
       if (chrome.runtime.lastError) {
         console.error('[popup] Background error:', chrome.runtime.lastError);
@@ -305,6 +321,8 @@ async function regenerateMessage() {
         return;
       }
       if (resp.ok) {
+        // Update currentTarget with the new payload for future regenerations
+        currentTarget = updatedPayload;
         const gm = resp.result?.generated_message || resp.result?.message || 'Generated message';
         displayMessage(gm);
       } else {

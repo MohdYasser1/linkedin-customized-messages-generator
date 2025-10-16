@@ -1,5 +1,8 @@
 // background.js
 
+// Import shared utilities
+importScripts('shared.js');
+
 // Configuration
 const SERVER_URL = 'http://localhost:8000';
 
@@ -13,15 +16,6 @@ chrome.runtime.onInstalled.addListener(() => {
     });
   } catch {}
 });
-
-// Helper to get API key from storage
-function getApiKey() {
-  return new Promise(resolve => {
-    chrome.storage.sync.get({ apiKey: null }, (items) => {
-      resolve(items.apiKey || null);
-    });
-  });
-}
 
 // Helper to check if user profile has been parsed before
 function getUserProfileParsedStatus() {
@@ -75,66 +69,59 @@ async function sendToBackend(profile) {
 
 // Function to call the parse_profile endpoint specifically for prefill
 async function parseProfileWithAI(htmlContent) {
-  return new Promise(resolve => {
-    chrome.storage.sync.get({ geminiApiKey: '' }, async (items) => {
-      const apiKey = items.geminiApiKey || '';
-      
-      if (!apiKey) {
-        resolve({ ok: false, error: 'no-api-key', message: 'Please configure your Gemini API key in the extension settings' });
-        return;
-      }
+  const apiKey = await getApiKey();
+  
+  if (!apiKey) {
+    return { ok: false, error: 'no-api-key', message: 'Please configure your Gemini API key in the extension settings' };
+  }
 
-      try {
-        const response = await fetch(`${SERVER_URL}/parse_profile`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            html_content: htmlContent,
-            timestamp: new Date().toISOString()
-          })
-        });
-
-        if (!response.ok) {
-          // Check for specific status codes
-          if (response.status === 503) {
-            resolve({ ok: false, error: '503', message: 'The model is overloaded. Please try again later.' });
-            return;
-          }
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        
-        if (data.error) {
-          resolve({ ok: false, error: 'backend-error', message: data.error });
-          return;
-        }
-
-        // Transform the data to match expected format
-        const profileData = {
-          name: data.name || '',
-          headline: data.headline || '',
-          about: data.about || '',
-          interests: data.interests || '',
-          strengths: Array.isArray(data.strengths) ? data.strengths.join(', ') : (data.strengths || ''),
-          other: data.others || ''
-        };
-
-        resolve({ ok: true, result: profileData });
-
-      } catch (error) {
-        console.error('Error calling parse_profile endpoint:', error);
-        resolve({ 
-          ok: false, 
-          error: 'network-error', 
-          message: `Failed to connect to AI service: ${error.message}` 
-        });
-      }
+  try {
+    const response = await fetch(`${SERVER_URL}/parse_profile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        html_content: htmlContent,
+        timestamp: new Date().toISOString()
+      })
     });
-  });
+
+    if (!response.ok) {
+      // Check for specific status codes
+      if (response.status === 503) {
+        return { ok: false, error: '503', message: 'The model is overloaded. Please try again later.' };
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.error) {
+      return { ok: false, error: 'backend-error', message: data.error };
+    }
+
+    // Transform the data to match expected format
+    const profileData = {
+      name: data.name || '',
+      headline: data.headline || '',
+      about: data.about || '',
+      interests: data.interests || '',
+      strengths: Array.isArray(data.strengths) ? data.strengths.join(', ') : (data.strengths || ''),
+      other: data.other || ''
+    };
+
+    return { ok: true, result: profileData };
+
+  } catch (error) {
+    console.error('Error calling parse_profile endpoint:', error);
+    return { 
+      ok: false, 
+      error: 'network-error', 
+      message: `Failed to connect to AI service: ${error.message}` 
+    };
+  }
 }
 
 
@@ -184,20 +171,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         messageError: null  // Clear any previous errors
       });
       
-      // Try to automatically open popup
-      chrome.action.openPopup().catch((error) => {
-        console.log("Could not auto-open popup:", error);
-        // Fallback: Show notification on the page
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-          if (tabs[0]) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              type: 'SHOW_SUCCESS_NOTIFICATION',
-              message: 'Message generated! Click the extension icon to view it.'
-            });
-          }
-        });
-      });
-      
       sendResponse({ ok: true, result: resp });
     }).catch(async (err) => {
       console.error("Failed to generate message:", err);
@@ -207,20 +180,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         generatedMessage: null,
         messageError: err.message,
         messageTarget: payload
-      });
-      
-      // Try to automatically open popup for error
-      chrome.action.openPopup().catch((error) => {
-        console.log("Could not auto-open error popup:", error);
-        // Fallback: Show error notification on the page
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-          if (tabs[0]) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              type: 'SHOW_ERROR_NOTIFICATION',
-              message: 'Message generation failed. Click the extension icon for details.'
-            });
-          }
-        });
       });
       
       sendResponse({ ok: false, error: err.message });

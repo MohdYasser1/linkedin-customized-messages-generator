@@ -25,15 +25,7 @@ function setUserProfile(profile) {
   });
 }
 
-// API Key functions
-function getApiKey() {
-  return new Promise(resolve => {
-    chrome.storage.sync.get({ geminiApiKey: '' }, (items) => {
-      resolve(items.geminiApiKey || '');
-    });
-  });
-}
-
+// API Key functions - setApiKey (getApiKey is now in shared.js)
 function setApiKey(apiKey) {
   return new Promise(resolve => {
     chrome.storage.sync.set({ geminiApiKey: apiKey }, () => resolve(true));
