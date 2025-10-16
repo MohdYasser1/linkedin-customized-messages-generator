@@ -28,7 +28,7 @@ function setupEventListeners() {
   // Regenerate button
   document.getElementById('regenerateBtn').addEventListener('click', regenerateMessage);
 
-  // Generate button (no-op for now)
+  // Generate button
   const genBtn = document.getElementById('generateBtn');
   if (genBtn) {
     genBtn.addEventListener('click', async () => {
@@ -169,14 +169,7 @@ function setupEventListeners() {
     });
   }
 
-  // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'MESSAGE_GENERATED') {
-      displayMessage(message.payload);
-    } else if (message.type === 'MESSAGE_ERROR') {
-      displayError(message.error);
-    }
-  });
+  // No background broadcast listeners needed; responses handled via callbacks
 }
 
 async function loadGeneratedMessage() {

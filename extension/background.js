@@ -17,33 +17,8 @@ chrome.runtime.onInstalled.addListener(() => {
   } catch {}
 });
 
-// Helper to check if user profile has been parsed before
-function getUserProfileParsedStatus() {
-  return new Promise(resolve => {
-    chrome.storage.sync.get({ userProfileParsed: false, userProfileData: null }, (items) => {
-      resolve({
-        isParsed: items.userProfileParsed || false,
-        profileData: items.userProfileData || null
-      });
-    });
-  });
-}
-
-// Helper to set user profile parsed status
-function setUserProfileParsedStatus(isParsed, profileData = null) {
-  return new Promise(resolve => {
-    chrome.storage.sync.set({ 
-      userProfileParsed: isParsed,
-      userProfileData: profileData 
-    }, () => {
-      resolve(true);
-    });
-  });
-}
-
 async function sendToBackend(profile) {
   const apiKey = await getApiKey();
-  // if (!apiKey) throw new Error('No API key configured');
 
   // Use the configured server URL
   const endpoint = `${SERVER_URL}/generate`; 
@@ -108,7 +83,7 @@ async function parseProfileWithAI(htmlContent) {
       headline: data.headline || '',
       about: data.about || '',
       interests: data.interests || '',
-      strengths: Array.isArray(data.strengths) ? data.strengths.join(', ') : (data.strengths || ''),
+      strengths: Array.isArray(data.strengths) ? data.strengths.join('\n') : (data.strengths || ''),
       other: data.other || ''
     };
 
@@ -128,11 +103,17 @@ async function parseProfileWithAI(htmlContent) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'PARSE_PROFILE_REQUEST') {
-    console.log("Received PARSE_PROFILE_REQUEST for options prefill");
-    const payload = message.payload;
+    console.log("Received PARSE_PROFILE_REQUEST for profile parsing");
+    const htmlContent = message.html;
     
-    // Call the AI parsing endpoint specifically for profile prefill
-    parseProfileWithAI(payload.htmlContent).then((resp) => {
+    if (!htmlContent) {
+      console.error("No HTML content provided for parsing");
+      sendResponse({ ok: false, error: 'no-html', message: 'No HTML content provided' });
+      return true;
+    }
+    
+    // Call the AI parsing endpoint with the HTML content
+    parseProfileWithAI(htmlContent).then((resp) => {
       console.log("Profile parsing completed:", resp);
       sendResponse(resp);
     }).catch((err) => {
@@ -195,18 +176,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Note: Removed action click handler since we now use default_popup
-
 // Context menu click handler
 chrome.contextMenus?.onClicked.addListener((info) => {
   if (info.menuItemId === 'lncmg-open-options') {
-    chrome.runtime.openOptionsPage();
-  }
-});
-
-// Keyboard command handler
-chrome.commands?.onCommand.addListener((cmd) => {
-  if (cmd === 'open-options') {
     chrome.runtime.openOptionsPage();
   }
 });

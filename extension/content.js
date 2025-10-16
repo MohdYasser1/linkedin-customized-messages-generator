@@ -22,38 +22,11 @@
     return { ok: true, htmlContent: htmlContent };
   }
 
-  // Allow Options page to request parsing for prefill
+  // Handle requests for profile HTML extraction
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg?.type === 'PARSE_PROFILE_REQUEST') {
-      (async () => {
-        console.log('Extracting profile HTML for AI parsing...');
-        
-        const result = await getMainElementHtml();
-        
-        if (!result.ok) {
-          sendResponse({ ok: false, error: result.error });
-          return;
-        }
-        
-        // Send HTML to background script for AI processing
-        chrome.runtime.sendMessage({ 
-          type: 'PARSE_PROFILE_REQUEST',
-          payload: { htmlContent: result.htmlContent }
-        }, (response) => {
-          if (chrome.runtime.lastError) {
-            console.error('Background script communication failed', chrome.runtime.lastError);
-            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
-          } else {
-            sendResponse(response);
-          }
-        });
-      })();
-      return true; // async response
-    }
-    
     if (msg?.type === 'GET_PROFILE_HTML') {
       (async () => {
-        console.log('Extracting profile HTML for message generation...');
+        console.log('Extracting profile HTML from LinkedIn page...');
         
         const result = await getMainElementHtml();
         sendResponse(result);

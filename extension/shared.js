@@ -49,29 +49,41 @@ async function parseUserProfile() {
       return { ok: false, error: 'Profile page load timeout' };
     }
     
-    // Try to parse the profile
-    const response = await chrome.tabs.sendMessage(tab.id, { type: 'PARSE_PROFILE_REQUEST' });
+    // Get profile HTML from content script
+    const htmlResponse = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PROFILE_HTML' });
     
     // Close the LinkedIn tab
     if (tab && tab.id) {
       chrome.tabs.remove(tab.id);
     }
     
-    if (response?.ok && response?.result) {
+    if (!htmlResponse?.ok) {
+      const errorMessage = htmlResponse?.message || 'Could not extract profile HTML';
+      console.error('[shared] Profile HTML extraction failed:', errorMessage);
+      return { ok: false, error: 'no-main-element', message: errorMessage };
+    }
+    
+    // Send HTML to background script for AI parsing
+    const parseResponse = await chrome.runtime.sendMessage({
+      type: 'PARSE_PROFILE_REQUEST',
+      html: htmlResponse.htmlContent
+    });
+    
+    if (parseResponse?.ok && parseResponse?.result) {
       console.log('[shared] Profile parsed successfully');
       
       // Save the full backend response and last parsed time to storage
       const lastParsed = new Date().toISOString();
       await chrome.storage.sync.set({
-        userProfileFull: response.fullProfile || response.result,
+        userProfileFull: parseResponse.fullProfile || parseResponse.result,
         userProfileLastParsed: lastParsed
       });
       console.log('[shared] Saved profile to storage with timestamp:', lastParsed);
       
-      return { ok: true, result: response.result, fullProfile: response.fullProfile };
+      return { ok: true, result: parseResponse.result, fullProfile: parseResponse.fullProfile };
     } else {
-      const errorMessage = response?.message || 'Could not parse profile data';
-      const errorType = response?.error || 'unknown';
+      const errorMessage = parseResponse?.message || 'Could not parse profile data';
+      const errorType = parseResponse?.error || 'unknown';
       console.error('[shared] Profile parsing failed:', errorType, errorMessage);
       return { ok: false, error: errorType, message: errorMessage };
     }

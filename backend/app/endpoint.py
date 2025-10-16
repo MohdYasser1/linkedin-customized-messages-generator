@@ -66,13 +66,13 @@ class GenerateMessageRequest(BaseModel):
     target_html: str = Field(description="The HTML content of the target profile")
     tone: str = Field(description="The desired tone for the message (e.g., 'professional', 'casual', 'friendly')")
     length: str = Field(description="The desired length of the message (e.g., 'short', 'medium', 'long')")
-    call_to_action: str = Field(description="The desired call to action (e.g., 'connect', 'meeting', 'coffee chat')")
+    call_to_action: str = Field(description="The desired call to action")
     extra_instruction: Optional[str] = Field(default="", description="Any additional instructions for message generation")
 
 
 
 
-# Parsing LinkedIn profile agent
+# Parsing LinkedIn profile 
 linkedin_profile_processor = Agent(
     role="LinkedIn Profile Processor and Analyst",
     goal="""To meticulously parse the HTML of a LinkedIn profile, extract all
@@ -88,27 +88,18 @@ linkedin_profile_processor = Agent(
     verbose=True,
     allow_delegation=False,
 )
-
-# Parsing LinkedIn profile tasks
-# PARSER_TASK_PROMPT ="""
-# Fully analyze the provided LinkedIn profile HTML. First, extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
-
-# Second, synthesize a summary of the user's professional interests as a concise paragraph that summarizes the user's professional
-#     passions and add it to the interests section and a list of their key strengths based on the extracted data.
-
-# Finally, structure all of this information into a JSON object that strictly follows the provided schema.
-
-# HTML Content to Analyze:
-# ```html
-# `{file_content}`
-# ```
-# """
 PARSER_TASK_PROMPT ="""
 Fully analyze the provided LinkedIn profile HTML. Extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
 
 Synthesize a summary of the user's professional interests as a concise paragraph that summarizes the user's professional passions and add it to the interests section and a list of their key strengths based on the extracted data.
 
 Structure all of this information into a JSON object that strictly follows the provided schema.
+
+**CRITICAL OUTPUT INSTRUCTIONS:**
+- Your FINAL and ONLY output must be the raw JSON object.
+- Do NOT include any introductory text, reasoning, explanations, or concluding remarks.
+- Do NOT wrap the JSON in markdown backticks (```json).
+- Your entire response MUST start with `{{` and end with `}}`.
 
 HTML Content to Analyze:
 ```html
@@ -118,50 +109,7 @@ HTML Content to Analyze:
 process_user_profile_task = Task(
     description=PARSER_TASK_PROMPT.format(file_content='{user_html}'),
     expected_output="""
-        A single, valid JSON object containing the user's complete profile information, matching the schema of the LinkedInProfile model.
-        **CRITICAL:** The output MUST be ONLY the raw JSON object itself.
-        Do NOT include any explanatory text, comments, or markdown formatting like ```json or ```.
-        Your entire response must start with `{` and end with `}`.
-
-        Example:
-        {
-            "name": "Jane Doe",
-            "headline": "Senior Software Engineer at TechCorp",
-            "about": "Experienced software engineer with a passion for developing innovative programs...",
-            "experiences": [
-                {
-                    "title": "Senior Software Engineer",
-                    "company": "TechCorp",
-                    "employment_type": "Full-time",
-                    "duration": "Jan 2020 - Present (4 yrs)",
-                    "description": "Leading a team of developers to build scalable web applications..."
-                }
-            ],
-            "education": [
-                {
-                    "institution": "State University",
-                    "degree": "Bachelor of Science",
-                    "field_of_study": "Computer Science",
-                    "duration": "2015 - 2019",
-                    "grade": "3.8 GPA"
-                }
-            ],
-            "activities": [
-                {
-                    "type": "posted this",
-                    "posted_ago": "2 days ago",
-                    "content": "Excited to share my latest project on AI-driven development..."
-                },
-                {
-                    "type": "reposted this",
-                    "posted_ago": "1 week ago",
-                    "content": "Check out this insightful article on the future of technology..."
-                }
-            ],
-            "interests": "Jane is passionate about AI, machine learning, and open-source software development...",
-            "strengths": ["Leadership", "Full-Stack Development", "Project Management"],
-            "other": "Certified Scrum Master, Contributor to Open Source Projects"
-        }
+        A single, raw, valid JSON object. The entire response must start with '{' and end with '}'. No other text or formatting is allowed.
     """,
     agent=linkedin_profile_processor,
     output_json=LinkedInProfile,
@@ -172,14 +120,14 @@ process_target_profile_task = Task(
     description=PARSER_TASK_PROMPT.format(file_content='{target_html}'),
     expected_output="A single, valid JSON object containing the user's complete profile information, matching the schema of the LinkedInProfile model.",
     agent=linkedin_profile_processor,
-    output_json=LinkedInProfile ,
+    output_json=LinkedInProfile,
     verbose=True,
     async_execution=True
 )
 
 
 
-# Profile matching agent
+# Profile matching 
 engagement_strategist = Agent(
     role="Strategic Engagement Analyst",
     goal="Produce a ranked JSON brief of the most impactful connection vectors between two professional profiles.",
@@ -192,7 +140,6 @@ engagement_strategist = Agent(
     verbose=True,
     allow_delegation=False,
 )
-# Profile matching task
 connection_analysis_task = Task(
     description="""
     As a Strategic Engagement Analyst, your mission is to produce an actionable brief on the most potent connection vectors between a 'user' and a 'target'. 
@@ -240,7 +187,7 @@ connection_analysis_task = Task(
 
 
 
-# Message generation agent
+# Message generation 
 message_writer_agent = Agent(
     role="Executive Ghostwriter for Professional Outreach",
     goal="Craft a perfectly tailored outreach message that is concise, compelling, and adheres strictly to all provided constraints (length, tone, CTA, and special instructions).",
@@ -253,7 +200,6 @@ message_writer_agent = Agent(
     verbose=True,
     allow_delegation=False,
 )
-# Message generation task
 write_message_task = Task(
     description="""
     As an Executive Ghostwriter, your mission is to write the final outreach message.
