@@ -3,6 +3,11 @@
   "name": "LinkedIn Customized Messages Generator",
   "version": "1.0",
   "description": "Generate personalized messages for LinkedIn connections based on their profile information.",
+  "icons": {
+    "16": "assets/chrome-extension-icons/logo-16.png",
+    "48": "assets/chrome-extension-icons/logo-48.png",
+    "128": "assets/chrome-extension-icons/logo-128.png"
+  },
   "permissions": [
     "activeTab",
     "storage",
@@ -19,6 +24,10 @@
     "service_worker": "background.js"
   },
   "action": {
+    "default_icon": {
+      "16": "assets/chrome-extension-icons/logo-16.png",
+      "32": "assets/chrome-extension-icons/logo-32.png"
+    },
     "default_title": "LinkedIn Customized Messages Generator",
     "default_popup": "popup.html"
   },
