@@ -29,6 +29,7 @@ class Education(BaseModel):
 
 # Define the structure for a single activity
 class Activity(BaseModel):
+    """A single recent activity/post on LinkedIn which the user has engaged with for example posted, commented, etc."""
     type: str = Field(description="The type of activity, e.g., 'reposted this'.")
     posted_ago: str = Field(description="The time elapsed since posting.")
     content: str = Field(description="The full text content of the post.")
