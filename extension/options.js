@@ -259,6 +259,22 @@ byId('save').addEventListener('click', saveForm);
 byId('prefill').addEventListener('click', prefillFromCurrentTab);
 byId('saveApiKey').addEventListener('click', saveApiKey);
 byId('testApiKey').addEventListener('click', testApiKey);
+byId('clearAllData').addEventListener('click', async () => {
+  const status = byId('apiStatus') || byId('status');
+  try {
+    await chrome.storage.sync.clear();
+    await chrome.storage.local.clear();
+    if (status) {
+      status.textContent = 'All extension data cleared from this browser.';
+      status.style.color = '#b00020';
+    }
+  } catch (e) {
+    if (status) {
+      status.textContent = 'Failed to clear data';
+      status.style.color = '#d73a49';
+    }
+  }
+});
 
 // Initialize the page
 loadForm();

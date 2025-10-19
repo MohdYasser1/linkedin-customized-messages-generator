@@ -13,7 +13,8 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: 'lncmg-open-options',
       title: 'LinkedIn Messages: Edit My Profile',
-      contexts: ['all']
+      contexts: ['page'],
+      documentUrlPatterns: ['https://www.linkedin.com/in/*']
     });
   } catch {}
 });
@@ -37,9 +38,7 @@ async function sendToBackend(profile) {
     const txt = await res.text();
     throw new Error(`Backend error: ${res.status} ${txt}`);
   }
-  console.log("Response received from backend");
   const result = await res.json();
-  console.log("Response data:", result);
   return result;
 }
 
@@ -104,7 +103,7 @@ async function parseProfileWithAI(htmlContent) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'PARSE_PROFILE_REQUEST') {
-    console.log("Received PARSE_PROFILE_REQUEST for profile parsing");
+  // Handle profile parsing request
     const htmlContent = message.html;
     
     if (!htmlContent) {
@@ -115,7 +114,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     // Call the AI parsing endpoint with the HTML content
     parseProfileWithAI(htmlContent).then((resp) => {
-      console.log("Profile parsing completed:", resp);
       sendResponse(resp);
     }).catch((err) => {
       console.error("Profile parsing failed:", err);
@@ -126,7 +124,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === 'GENERATE_MESSAGE') {
-    console.log("Received GENERATE_MESSAGE:", message);
     const payload = message.payload;
     
     // The payload now contains: user_data, target_html, tone, length, call_to_action, extra_instruction
@@ -139,11 +136,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       extra_instruction: payload.extra_instruction
     };
     
-    console.log("Sending to backend:", backendPayload);
     
     // call backend, respond asynchronously
     sendToBackend(backendPayload).then(async (resp) => {
-      console.log("Message generated successfully:", resp);
       
       // Store the generated message for popup
       const generatedMessage = resp.generated_message || resp.message || 'Generated message placeholder';
@@ -178,8 +173,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Context menu click handler
-chrome.contextMenus?.onClicked.addListener((info) => {
+chrome.contextMenus?.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'lncmg-open-options') {
-    chrome.runtime.openOptionsPage();
+    const url = tab?.url || info.pageUrl || '';
+    if (/^https:\/\/www\.linkedin\.com\/in\//.test(url)) {
+      chrome.runtime.openOptionsPage();
+    }
   }
 });

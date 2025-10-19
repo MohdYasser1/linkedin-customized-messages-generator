@@ -135,7 +135,7 @@ function setupEventListeners() {
             extra_instruction: extra
           };
           
-          console.log('[popup] Sending generate message request with payload');
+          // Send the generate message request (avoid logging payload contents in production)
           
           // Send the payload to the background script and handle response directly
           chrome.runtime.sendMessage({
@@ -161,7 +161,7 @@ function setupEventListeners() {
           });
           
         } catch (error) {
-          console.error('[popup] Error getting target HTML:', error);
+          console.error('[popup] Error getting target HTML');
           displayError('Failed to read profile content. Please make sure you are on a LinkedIn profile page.');
           return;
         }
@@ -192,7 +192,7 @@ async function loadGeneratedMessage() {
       displayPlaceholder();
     }
   } catch (error) {
-    console.error('Failed to load message:', error);
+  console.error('Failed to load message');
     displayError('Failed to load generated message');
   }
 }
@@ -262,7 +262,7 @@ async function copyMessage() {
     await navigator.clipboard.writeText(textToCopy);
     showStatus('Message copied to clipboard!', 'success');
   } catch (error) {
-    console.error('Failed to copy message:', error);
+  console.error('Failed to copy message');
     // Fallback: create a textarea and select the text
     const textarea = document.createElement('textarea');
     textarea.value = textToCopy;
@@ -305,7 +305,7 @@ async function regenerateMessage() {
       payload: updatedPayload
     }, (resp) => {
       if (chrome.runtime.lastError) {
-        console.error('[popup] Background error:', chrome.runtime.lastError);
+  console.error('[popup] Background error');
         displayError('Failed to regenerate message. Please try again.');
         return;
       }
@@ -323,7 +323,7 @@ async function regenerateMessage() {
       }
     });
   } catch (error) {
-    console.error('Failed to regenerate message:', error);
+  console.error('Failed to regenerate message');
     displayError('Failed to regenerate message');
   }
 }

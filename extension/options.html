@@ -90,14 +90,26 @@
           <label>Gemini API Key 
             <input id="geminiApiKey" type="password" placeholder="Enter your Gemini API key..." />
           </label>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #0a66c2; margin-left: 8px;">Get your API key</a>
           <p class="muted" style="margin-top: 4px; font-size: 13px;">
-            Your API key is stored securely in your browser and never shared.
-            <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #0a66c2;">Get your API key here</a>
+            Your API key is stored locally in your Chrome extension storage. When you use Generate Message or Prefill from LinkedIn, your API key and the necessary request data are sent over HTTPS to the configured AI backend service to process your request. They are not sent anywhere else. See our
+            <a href="https://github.com/MohdYasser1/linkedin-customized-messages-generator/blob/main/PRIVACY_POLICY.md" target="_blank" style="color: #0a66c2;">Privacy Policy</a>.
           </p>
+
+          <div style="margin-top: 12px; background: #f7f7f8; border: 1px solid #e6e6e6; border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 600; margin-bottom: 6px;">Data Use & Privacy (Summary)</div>
+            <ul style="margin: 0 0 6px 18px; padding: 0; color: #555;">
+              <li>Your inputs here (name, title, etc.) are saved in Chrome sync storage on your device.</li>
+              <li>When you generate a message or prefill your profile, the LinkedIn page content (main section HTML) and your profile data are sent to the backend AI service to create the output.</li>
+              <li>Your API key is transmitted only to that backend to fulfill your request.</li>
+            </ul>
+            <div class="muted" style="font-size: 12px;">Not affiliated with or endorsed by LinkedIn.</div>
+          </div>
 
           <div class="actions">
             <button id="saveApiKey">Save API Key</button>
             <button id="testApiKey" style="background: #f0f0f0; color: #333;">Test Connection</button>
+            <button id="clearAllData" style="background: #fff; color: #b00020; border-color: #e6b8b8;">Clear All Data</button>
             <span id="apiStatus" class="muted"></span>
           </div>
         </div>

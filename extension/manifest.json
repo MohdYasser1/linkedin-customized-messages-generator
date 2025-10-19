@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LinkedIn Customized Messages Generator",
   "version": "1.0",
-  "description": "Generate personalized messages for LinkedIn connections based on their profile information.",
+  "description": "Generate personalized messages for LinkedIn connections based on their profile information. Not affiliated with or endorsed by LinkedIn.",
   "icons": {
     "16": "assets/chrome-extension-icons/logo-16.png",
     "48": "assets/chrome-extension-icons/logo-48.png",
@@ -12,13 +12,12 @@
     "activeTab",
     "storage",
     "contextMenus",
-    "tabs",
-    "action"
+    "tabs"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "http://127.0.0.1:8000/*",
-    "http://localhost:8000/*"
+    "https://theaverage-linkedin-customized-message-generator.hf.space/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
