@@ -5,6 +5,7 @@ importScripts('shared.js');
 
 // Configuration
 const SERVER_URL = 'https://theaverage-linkedin-customized-message-generator.hf.space';
+// const SERVER_URL = 'http://localhost:8000';
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('LinkedIn Parser installed');

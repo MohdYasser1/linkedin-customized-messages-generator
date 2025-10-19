@@ -1,5 +1,6 @@
 import json
 import re
+import os
 
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field
@@ -41,7 +42,7 @@ class LinkedInProfile(BaseModel):
     about: str = Field(description="The complete text from the 'About' section.")
     experiences: List[Experience] = Field(default=[], description="A list of all job experiences.")
     education: List[Education] = Field(default=[], description="A list of all educational entries.")
-    activities: List[Activity] = Field(default=[], description="A list of recent activities.")
+    activities: List[Activity] = Field(default=[], description="A list of ALL recent activities.")
     interests: str = Field(description="A synthesized paragraph about professional interests.")
     strengths: List[str] = Field(description="A list of key professional strengths.")
     other: Optional[str] = Field(default=None, description="Any other relevant information like certifications or projects etc.")
@@ -71,7 +72,25 @@ class GenerateMessageRequest(BaseModel):
     extra_instruction: Optional[str] = Field(default="", description="Any additional instructions for message generation")
 
 
+# Define a template for any agent that MUST output JSON
+JSON_SYSTEM_TEMPLATE = """
+You are {role}. {backstory}
+Your goal is: {goal}
 
+**CRITICAL OUTPUT INSTRUCTIONS:**
+- Your FINAL and ONLY output must be the raw JSON object.
+- Do NOT include any introductory text, reasoning, explanations, or concluding remarks.
+- Do NOT wrap the JSON in markdown backticks (```json).
+- Your entire response MUST start with `{{` and end with `}}`.
+"""
+
+JSON_PROMPT_TEMPLATE = """
+Current Task: {input}
+
+Analyze the provided LinkedIn profile HTML and extract the structured information.
+
+Begin! Output ONLY the JSON object, nothing else.
+"""
 
 # Parsing LinkedIn profile 
 linkedin_profile_processor = Agent(
@@ -86,8 +105,11 @@ linkedin_profile_processor = Agent(
     career story. Your precision in data extraction and your keen eye for identifying
     talent and potential are unmatched. You deliver comprehensive, structured insights
     ready for immediate use.""",
+    system_template=JSON_SYSTEM_TEMPLATE,
+    prompt_template=JSON_PROMPT_TEMPLATE,
     verbose=True,
     allow_delegation=False,
+    use_system_prompt=True
 )
 PARSER_TASK_PROMPT ="""
 Fully analyze the provided LinkedIn profile HTML. Extract all key data points including name, headline, about, ALL experiences, ALL education entries, and ALL recent activities.
@@ -115,7 +137,7 @@ process_user_profile_task = Task(
     agent=linkedin_profile_processor,
     output_json=LinkedInProfile,
     verbose=True,
-    async_execution=True
+    async_execution=False
 )
 process_target_profile_task = Task(
     description=PARSER_TASK_PROMPT.format(file_content='{target_html}'),
@@ -245,7 +267,6 @@ router = APIRouter()
 # Create a POST endpoint to parse and update the USER's data
 @router.post("/parse_profile", response_model=LinkedInProfile)
 async def parse_linkedin_profile(request: dict, authorization: Optional[str] = Header(None)):
-    print("Request received for profile parsing:", request)
     
     # Extract API key from Authorization header
     api_key = None
@@ -262,10 +283,11 @@ async def parse_linkedin_profile(request: dict, authorization: Optional[str] = H
         raise HTTPException(status_code=400, detail="No HTML content provided")
     
     try:
+        os.environ["GEMINI_API_KEY"] = api_key
         # Update the LLM with the provided API key
         profile_llm = LLM(
             model=MODEL_NAME,
-            temperature=0.6,
+            temperature=0.4,
             api_key=api_key
         )
         
