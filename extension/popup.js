@@ -162,7 +162,7 @@ function setupEventListeners() {
           
         } catch (error) {
           console.error('[popup] Error getting target HTML');
-          displayError('Failed to read profile content. Please make sure you are on a LinkedIn profile page.');
+          displayError('Please refresh the page and try again. Please make sure you are on a LinkedIn profile page.');
           return;
         }
       });

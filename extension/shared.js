@@ -42,6 +42,7 @@ async function parseUserProfile() {
     });
     
     if (!loadSuccess) {
+      console.error('[shared] Profile page load timed out');
       // Close the tab if it timed out
       if (tab && tab.id) {
         chrome.tabs.remove(tab.id);
@@ -50,6 +51,7 @@ async function parseUserProfile() {
     }
     
     // Get profile HTML from content script
+    console.log('[shared] Requesting profile HTML from content script...');
     const htmlResponse = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PROFILE_HTML' });
     
     // Close the LinkedIn tab

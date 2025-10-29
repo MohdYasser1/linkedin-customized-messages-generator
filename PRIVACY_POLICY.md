@@ -1,8 +1,8 @@
 # Privacy Policy
 
-Last updated: 2025-10-20
+Last updated: 2025-10-30
 
-This Privacy Policy describes how the LinkedIn Customized Messages Generator browser extension (the "Extension") collects, uses, and shares information.
+This Privacy Policy describes how the AI Personalized Message Generator for LinkedIn browser extension (the "Extension") collects, uses, and shares information.
 
 We are not affiliated with or endorsed by LinkedIn.
 
@@ -25,11 +25,18 @@ We are not affiliated with or endorsed by LinkedIn.
 
 ## Data Retention
 
-- The Extension does not persistently store your API key or page content on our servers beyond what is necessary to process your request. Any server-side transient processing or logging will be minimized and purged within a reasonable period. We do not sell your information.
+- The Extension does not persistently store your API key or page content on our servers beyond what is necessary to process your request.
+- Server-side processing is transient: data is processed in memory and not permanently stored in databases or logs.
+- Any temporary logs needed for debugging are automatically purged within 24 hours.
+- We do not sell, share with advertisers, or use your data for any purpose other than fulfilling your message generation requests.
+- We do not use your data to train AI models or for analytics beyond basic service operation metrics.
 
 ## Sharing
 
-- We do not share your information with third parties except the backend AI service used to fulfill your requests.
+- We do not share your information with third parties except our backend AI service (hosted on Hugging Face Spaces) used to fulfill your message generation requests.
+- The backend AI service may call Google's Generative Language API (Gemini) using your provided API key to process requests.
+- We do not sell your data to advertisers, data brokers, or any other third parties.
+- We do not use your data for purposes unrelated to the extension's core functionality (generating personalized LinkedIn message drafts).
 
 ## Security
 
@@ -38,7 +45,9 @@ We are not affiliated with or endorsed by LinkedIn.
 ## Your Choices
 
 - You can remove or update data in the Options page at any time.
+- You can use the "Clear All Data" button in the Options page to delete all locally stored extension data.
 - You can uninstall the Extension to stop all data collection and processing.
+- You have control over what data is sent: the extension only processes data when you explicitly click "Generate Message" or "Prefill from LinkedIn."
 
 ## Changes to This Policy
 
