@@ -14,15 +14,15 @@ MODEL_NAME = "gemini/gemini-2.5-flash-lite"
 
 # Define the structure for a single experience
 class Experience(BaseModel):
-    title: str = Field(description="The job title.")
-    company: str = Field(description="The company name.")
-    employment_type: str = Field(description="e.g., 'Part-time', 'Internship'")
-    duration: str = Field(description="The full duration string.")
-    description: str = Field(description="The detailed description of the role.")
+    title: Optional[str] = Field(description="The job title.")
+    company: Optional[str] = Field(description="The company name.")
+    employment_type: Optional[str] = Field(description="e.g., 'Part-time', 'Internship'")
+    duration: Optional[str] = Field(description="The full duration string.")
+    description: Optional[str] = Field(description="The detailed description of the role.")
 
 # Define the structure for a single education entry
 class Education(BaseModel):
-    institution: str = Field(description="The name of the school or university.")
+    institution: Optional[str] = Field(description="The name of the school or university.")
     degree: Optional[str] = Field(default=None, description="The degree name.")
     field_of_study: Optional[str] = Field(default=None, description="The field of study.")
     duration: Optional[str] = Field(default=None, description="The years of attendance.")
@@ -31,15 +31,15 @@ class Education(BaseModel):
 # Define the structure for a single activity
 class Activity(BaseModel):
     """A single recent activity/post on LinkedIn which the user has engaged with for example posted, commented, etc."""
-    type: str = Field(description="The type of activity, e.g., 'reposted this'.")
-    posted_ago: str = Field(description="The time elapsed since posting.")
-    content: str = Field(description="The full text content of the post.")
+    type: Optional[str] = Field(description="The type of activity, e.g., 'reposted this'.")
+    posted_ago: Optional[str] = Field(description="The time elapsed since posting.")
+    content: Optional[str] = Field(description="The full text content of the post.")
 
 # Define the main, top-level JSON structure
 class LinkedInProfile(BaseModel):
     name: str = Field(description="The user's full name.")
-    headline: str = Field(description="The professional headline.")
-    about: str = Field(description="The complete text from the 'About' section.")
+    headline: Optional[str] = Field(description="The professional headline.")
+    about: Optional[str] = Field(description="The complete text from the 'About' section.")
     experiences: List[Experience] = Field(default=[], description="A list of all job experiences.")
     education: List[Education] = Field(default=[], description="A list of all educational entries.")
     activities: List[Activity] = Field(default=[], description="A list of ALL recent activities.")
