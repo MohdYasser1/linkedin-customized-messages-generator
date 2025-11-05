@@ -1,7 +1,4 @@
 fastapi
 uvicorn
 pydantic
-json
-re
-typing
-crewai
+crewai[google-genai]
